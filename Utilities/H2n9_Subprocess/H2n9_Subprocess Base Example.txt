@@ -1,0 +1,40 @@
+@name 
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+##
+# A starting e2 for setting up and working with subproceses
+#
+
+interval(100)
+
+if(first()) {
+    #include "H2n9_Subprocess_V2"
+    
+    local TargetIndex = 10
+
+function number subprocessExample(Index, Params:table) {
+    # Have we reached are target index paremeter?
+    if(Index > Params["TargetIndex",number]) {
+        # Run any code that we want upon finishing a subprocess
+        print("Hello World!")
+        
+        # Return Code 1 - We finshed the subprocess
+        return 1
+    }
+    
+    # Run iterative code here   
+    print(Index)
+    
+    # Return Code 0 - Increment Index and continue iterating
+    return 0
+}
+
+    # Add the subprocess to the queue with the "TargetIndex" parameter set to the variable of TargetIndex (default 10)
+    addSubprocess("subprocessExample", table("TargetIndex"=TargetIndex))
+}
+
+# Continously call update subprocesses to detect if the a subprocesses has been added and to run any current subprocesses
+updateSubprocesses()
