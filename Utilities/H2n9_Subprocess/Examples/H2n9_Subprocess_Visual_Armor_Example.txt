@@ -1,0 +1,98 @@
+@name H2n9_Subprocess Visual Armor Example
+@persist StrongColor:vector WeakColor:vector DuctilityIsAlpha FindRange
+
+##
+# An H2n9_Subprocess example that sets the color/alpha of props based on their ACF armor and ductility
+#
+# Potential Improvement -
+#   This E2 cannot currently revert a build back to its default colors
+#       - This could be added by storing the props original color before changing its color
+#       - Then add a new subprocess that reverts the props colors back to the stored original color
+##
+
+interval(100)
+
+if(first()) {
+    #include "H2n9_Subprocess_V2"
+    
+    # Color for strong armor
+    StrongColor = vec(255,0,0)
+    
+    # Color for weak armor
+    WeakColor = vec(0,255,0)
+    
+    # Show prop ductility as alpha
+    DuctilityIsAlpha = 0
+    
+    # How far we should find props in units
+    FindRange = 500
+
+
+function array getProps() {
+    findInSphere(entity():pos(), FindRange)
+    # Only color normal physics props
+    findClipToClass("prop_physics")
+    
+    return findToArray()
+}
+
+# Start the visualisation process
+function visualiseArmor() {
+    local Props = getProps()
+    
+    addSubprocess("findStrongest", table("Props"=Props))
+}
+
+# We need to find the strongest prop in order to properly scale the colors between strong and weak
+function number findStrongest(Index, Params:table) {
+    local Props = Params["Props",array]
+    
+    if(Index > Props:count()) {
+        addSubprocess("colorProps", table("Props"=Props, "MaxArmor"=Params["MaxArmor",number], "MaxDuctility"=Params["MaxDuctility",number]))
+        
+        return 1
+    }
+    
+    local Armor = Props[Index, entity]:acfPropArmor()
+    local Ductility = Props[Index, entity]:acfPropDuctility()
+    
+    if(Armor > Params["MaxArmor",number]) {
+        Params["MaxArmor",number] = Armor
+    }
+    
+    if(Ductility > Params["MaxDuctility",number]) {
+        Params["MaxDuctility",number] = Ductility
+    } 
+    
+    return 0
+}
+
+# After finding the strongest props we can now color all of the props accordingly
+function number colorProps(Index, Params:table) {
+    local Props = Params["Props",array]
+    
+    if(Index > Props:count()) {
+        return 1
+    }
+    
+    local Prop = Props[Index, entity]
+    
+    local ArmorRatio = (1/Params["MaxArmor", number]) * Prop:acfPropArmor()
+    local Color = mix(StrongColor, WeakColor, ArmorRatio)
+    
+    local Alpha = 255
+    
+    if(DuctilityIsAlpha) {
+        Alpha = 105+(150/Params["MaxDuctility",number]) * Prop:acfPropDuctility()
+    }
+    
+    Prop:setColor(Color, Alpha)
+    
+    return 0
+}
+
+visualiseArmor()
+
+}
+
+updateSubprocesses()
