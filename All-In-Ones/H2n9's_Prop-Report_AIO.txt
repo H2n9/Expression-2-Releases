@@ -1,0 +1,1105 @@
+@name H2n9's Prop-Report AIO
+@inputs EGP:wirelink
+
+@persist SubprocessQueue:table CurrentSubprocess:table IsProcessing ProcessingIndex CInc CFunc:string CParams:table CRate COnHolo COnProp
+
+@persist RegisteredEGPs:table Themes:table HEGPCLT:table
+
+@persist PlayerData:table ExpandedIndex ExpandQueue:array ScoreWarningLine ExpandStep
+
+interval(80)
+
+##
+# H2n9's Prop-Report
+# https://github.com/H2n9/Expression-2-Releases
+# V1.0 AIO
+##
+
+## All-In-One edition with all includes copy-pasted into code for easier distribution
+
+## Recommended max players = 16 ##
+
+if(first()) {
+    #
+
+    ScoreWarningLine = 6
+
+    #
+
+    ExpandedIndex = 1
+    ExpandStep = 1
+
+## INCLUDES ##
+
+# Internal function for building a subprocess table
+function table createSubprocess(Func:string, Params:table, Flags:table) {
+    return table("Func"=Func, "Params"=Params, "Increment"=1, "StartIndex"=1, "Rate"=1, "OnHolo"=0, "OnProp"=0):merge(Flags)
+}
+
+##
+
+# Add a subprocess to the queue
+function addSubprocess(Function:string, Parameters:table, Flags:table) {
+    SubprocessQueue:pushTable(createSubprocess(Function, Parameters, Flags))
+}
+
+function addSubprocess(Function:string, Parameters:table) {
+    addSubprocess(Function, Parameters, table())    
+}
+
+##
+
+# Check if a specific function is in the queue
+function number inQueue(Function:string) {
+    for(I=1,SubprocessQueue:count()) {
+        if(SubprocessQueue[1,table]["Func",string] == Function) {
+            return 1
+        }
+    }
+    return 0
+}
+
+##
+
+function number getAndStartSubprocess() {
+    if(SubprocessQueue:count() > 0) {
+        CurrentSubprocess = SubprocessQueue[1,table]
+        SubprocessQueue:shift()
+        
+        ProcessingIndex = CurrentSubprocess["StartIndex", number]
+        
+        # Speedup global variables - intended to avoid constant table lookups
+        CInc = CurrentSubprocess["Increment", number]
+        CFunc = CurrentSubprocess["Func", string]
+        CParams = CurrentSubprocess["Params",table]
+        CRate = 100 * CurrentSubprocess["Rate",number]
+        COnHolo = CurrentSubprocess["OnHolo",number]
+        COnProp = CurrentSubprocess["OnProp",number]
+        #
+        
+        IsProcessing = 1
+        
+        return 1
+    } else {
+        return 0
+    }
+}
+
+function doCurrentSubprocess() {
+    while(perf(CRate)) {
+        if(!holoCanCreate() & COnHolo) { continue }
+        if(!propCanCreate() & COnProp) { continue }
+        
+        local ReturnValue = CFunc(ProcessingIndex, CParams)[number] 
+        switch(ReturnValue) {
+            case -1,
+                break
+            case 0,
+                ProcessingIndex += CInc
+                break
+            case 1,
+                IsProcessing = 0
+                CurrentSubprocess = table()
+                
+                if(getAndStartSubprocess()) { break } else { return }
+            case 2,
+                ProcessingIndex += CInc
+                return
+        }
+        continue
+    }
+}
+
+function updateSubprocesses() {
+    if(IsProcessing) {
+       doCurrentSubprocess() 
+    } else {
+        if(getAndStartSubprocess()) {
+            doCurrentSubprocess()
+        }    
+    }
+}
+
+function number wirelink:id() {
+    return This:entity():id()
+}
+
+function registerEGP(EGP:wirelink) {
+    local Array = array()
+    for(I=1,300) {
+        Array:pushNumber(I)
+    }
+    
+    RegisteredEGPs[EGP:id(), table] = table()
+    
+    RegisteredEGPs[EGP:id(), table]["Available",array] = Array
+    RegisteredEGPs[EGP:id(), table]["Objects",table] = table()
+    RegisteredEGPs[EGP:id(), table]["Lists",table] = table()
+    RegisteredEGPs[EGP:id(), table]["Groups",table] = table()
+    RegisteredEGPs[EGP:id(), table]["CurrentGroup", string] = ""
+}
+
+function number wirelink:seeAvailableIndex() { # Returns without removing
+    return RegisteredEGPs[This:id(), table]["Available",array][1,number]
+}
+
+function number wirelink:getAvailableIndex() { # Removes and returns
+    local CGroup = RegisteredEGPs[This:id(), table]["CurrentGroup", string]
+    if(CGroup != "") {
+        RegisteredEGPs[This:id(), table]["Groups",table][CGroup, array]:pushNumber(This:seeAvailableIndex())
+    }
+    
+    return RegisteredEGPs[This:id(), table]["Available",array]:shiftNumber()
+}
+
+function wirelink:addAvailableIndex(Index) {
+    RegisteredEGPs[This:id(), table]["Available",array]:pushNumber(Index)
+}
+
+##
+
+## DELETE Functions ##
+
+function wirelink:egpRemove(Array:array) {
+    for(I=1,Array:count()) {
+        This:egpRemove(Array[I,number])
+        This:addAvailableIndex(Array[I,number])
+    }
+}
+
+##
+
+## BOX Functions ##
+
+function number wirelink:egpAdvBox(Pos:vector2, Size:vector2, Color:vector4) {
+    local Index = This:getAvailableIndex()
+    This:egpBox(Index, Pos, Size)
+    This:egpColor(Index, Color)
+    return Index
+}
+
+function number wirelink:egpAdvBox(Pos:vector2, Size:vector2, Color:vector, Alpha) {
+    return This:egpAdvBox(Pos, Size, vec4(Color, Alpha))
+}
+
+function number wirelink:egpAdvBox(Pos:vector2, Size:vector2, Color:vector) {
+    return This:egpAdvBox(Pos, Size, vec4(Color, 255))
+}
+
+## ROUNDED BOX Functions ##
+
+function number wirelink:egpAdvRoundedBox(Pos:vector2, Size:vector2, Color:vector4, Radius) {
+    local Index = This:getAvailableIndex()
+    This:egpRoundedBox(Index, Pos, Size)
+    This:egpColor(Index, Color)
+    This:egpRadius(Index, Radius)
+    return Index
+}
+
+function number wirelink:egpAdvRoundedBox(Pos:vector2, Size:vector2, Color:vector4) {
+    return This:egpAdvRoundedBox(Pos, Size, Color, 6)
+}
+
+function number wirelink:egpAdvRoundedBox(Pos:vector2, Size:vector2, Color:vector, Radius) {
+    return This:egpAdvRoundedBox(Pos, Size, vec4(Color, 255), Radius)
+}
+
+function number wirelink:egpAdvRoundedBox(Pos:vector2, Size:vector2, Color:vector) {
+    return This:egpAdvRoundedBox(Pos, Size, vec4(Color, 255), 6)
+}
+
+##
+
+## TEXT Functions ##
+
+function number wirelink:egpAdvText(Text:string, Pos:vector2, Color:vector4, FontSize) {
+    local Index = This:getAvailableIndex()
+    This:egpText(Index, Text, Pos)
+    This:egpColor(Index, Color)
+    This:egpFont(Index, "Trebuchet", FontSize)
+    return Index
+}
+
+function number wirelink:egpAdvText(Text:string, Pos:vector2, Color:vector, FontSize) {
+    return This:egpAdvText(Text, Pos, vec4(Color,255), FontSize)
+}
+
+function number wirelink:egpAdvText(Text:string, Pos:vector2, FontSize) {
+    return This:egpAdvText(Text, Pos, vec4(255), FontSize)
+}
+
+function array wirelink:egpAdvTextShadow(Text:string, Pos:vector2, Color:vector4, FontSize, Shadow) {
+    local Shadow = This:egpAdvText(Text, vec2(Shadow), vec4(0,0,0,255), FontSize)
+    local Label = This:egpAdvText(Text, Pos, Color, FontSize)
+    This:egpParent(Shadow, Label)
+    return array(Label, Shadow)
+}
+
+function array wirelink:egpAdvTextShadow(Text:string, Pos:vector2, Color:vector, FontSize, Shadow) {
+    return This:egpAdvTextShadow(Text, Pos, vec4(Color, 255), FontSize, Shadow)
+}
+
+function array wirelink:egpAdvTextShadow(Text:string, Pos:vector2, FontSize, Shadow) {
+    return This:egpAdvTextShadow(Text, Pos, vec4(255), FontSize, Shadow)
+}
+
+#
+
+function number wirelink:egpAdvTextLayout(Text:string, Pos:vector2, Size:vector2, Color:vector4, FontSize) {
+    local Index = This:getAvailableIndex()
+    This:egpTextLayout(Index, Text, Pos, Size)
+    This:egpColor(Index, Color)
+    This:egpFont(Index, "Trebuchet", FontSize)
+    return Index
+}
+
+function number wirelink:egpAdvTextLayout(Text:string, Pos:vector2, Size:vector2, FontSize) {
+    return This:egpAdvTextLayout(Text, Pos, Size, vec4(255), FontSize)
+}
+
+function number wirelink:egpCenteredText(Text:string, Pos:vector2, Size:vector2, FontSize) {
+    local Obj = This:egpAdvTextLayout(Text, Pos - Size/2, Size, vec4(255), FontSize)
+    This:egpAlign(Obj, 1, 1)
+    return Obj
+}
+
+function array wirelink:egpCenteredTextShadow(Text:string, Pos:vector2, Size:vector2, FontSize, Shadow) {
+    local Shadow = This:egpAdvTextLayout(Text, vec2(Shadow), Size, vec4(0,0,0, 255), FontSize)
+    local Obj = This:egpAdvTextLayout(Text, Pos - Size/2, Size, vec4(255), FontSize)
+    This:egpAlign(Obj, 1,1)
+    This:egpAlign(Shadow, 1,1)
+    This:egpParent(Shadow, Obj)
+    return array(Obj, Shadow)
+}
+
+##
+
+function number wirelink:egpAdvCircle(Pos:vector2, Size:vector2, Color:vector4) {
+    local Index = This:getAvailableIndex()
+    This:egpCircle(Index, Pos, Size)
+    This:egpColor(Index, Color)
+    return Index
+}
+
+function number wirelink:egpAdvCircle(Pos:vector2, Size:vector2, Color:vector) {
+    return This:egpAdvCircle(Pos, Size, vec4(Color, 255))
+}
+
+function number wirelink:egpAdvWedge(Pos:vector2, Size:vector2, Color:vector, Angle) {
+    local Index = This:getAvailableIndex()
+    This:egpWedge(Index, Pos, Size)
+    This:egpColor(Index, Color)
+    This:egpSize(Index, Angle)
+    return Index
+}
+
+##
+
+
+## BUTTON Functions ##
+
+function array wirelink:egpLabel(Pos:vector2, Size:vector2, Color:vector4, Text:string, FontSize) {
+    local Box = This:egpAdvBox(Pos, Size, Color)
+    local Label = This:egpAdvText(Text, -Size/2 + vec2(6,0), vec(255), FontSize)
+    This:egpParent(Label, Box)
+    return array(Box, Label)
+}
+
+function array wirelink:egpLabel(Pos:vector2, Size:vector2, Color:vector, Text:string, FontSize) {
+    return This:egpLabel(Pos, Size, vec4(Color, 255), Text, FontSize)
+}
+
+function array wirelink:egpLabel(Pos:vector2, Size:vector2, Color:vector4, Text:string, FontSize, Shadow) {
+    local Box = This:egpAdvBox(Pos, Size, Color)
+    local Label = This:egpAdvTextShadow(Text, -Size/2 + vec2(6,0), vec(255), FontSize, Shadow)
+    This:egpParent(Label[1,number], Box)
+    return array(Box):add(Label)
+}
+
+#
+
+function array wirelink:egpButton(Pos:vector2, Size:vector2, Color:vector4, Text:string, FontSize) {
+    local Box = This:egpAdvRoundedBox(Pos, Size, Color, 9)
+    local Label = This:egpAdvText(Text, -Size/2 + vec2(6,0), vec(255), FontSize)
+    This:egpParent(Label, Box)
+    return array(Box, Label)
+}
+
+function array wirelink:egpButton(Pos:vector2, Size:vector2, Color:vector, Text:string, FontSize) {
+    return This:egpButton(Pos, Size, vec4(Color, 255), Text, FontSize)
+}
+
+function array wirelink:egpButton(Pos:vector2, Size:vector2, Color:vector4, Text:string, FontSize, Shadow) {
+    local Box = This:egpAdvRoundedBox(Pos, Size, Color, 9)
+    local Label = This:egpAdvTextShadow(Text, -Size/2 + vec2(6,0), vec(255), FontSize, Shadow)
+    This:egpParent(Label[1,number], Box)
+    return array(Box):add(Label)
+}
+
+function array wirelink:egpButton(Pos:vector2, Size:vector2, Color:vector, Text:string, FontSize, Shadow) {
+    return This:egpButton(Pos, Size, vec4(Color, 255), Text, FontSize, Shadow)
+}
+
+#
+
+function array wirelink:egpCenteredButton(Pos:vector2, Size:vector2, Color:vector, Text:string, FontSize) {
+    local Box = This:egpAdvRoundedBox(Pos, Size, Color, 9)
+    local Label = This:egpAdvTextLayout(Text, -Size/2, Size, FontSize)
+    This:egpAlign(Label, 1)
+    This:egpParent(Label, Box)
+    return array(Box, Label)
+}
+
+function array wirelink:egpCenteredButton(Pos:vector2, Size:vector2, Color:vector, Text:string, FontSize, Shadow) {
+    local Box = This:egpAdvRoundedBox(Pos, Size, Color, 9)
+    local Label = This:egpCenteredTextShadow(Text, vec2(), Size, FontSize, Shadow)
+    This:egpParent(Label[1,number], Box)
+    return array(Box):add(Label)
+}
+
+#
+
+function array wirelink:egpToolButton(Pos:vector2, Size:vector2, Color:vector, Material:string) {
+    local Box = This:egpAdvRoundedBox(Pos, Size, vec(255), 6)
+    local Icon = This:egpAdvBox(vec2(), Size, Color, 255)
+    This:egpMaterial(Icon, Material)
+    This:egpParent(Icon, Box)
+    return array(Box, Icon)
+}
+
+function array wirelink:egpToolButton(Pos:vector2, Size:vector2, ColorA:vector, ColorB:vector, Material:string) {
+    local Box = This:egpAdvRoundedBox(Pos, Size, ColorB, 6)
+    local Icon = This:egpAdvBox(vec2(), Size, ColorA, 255)
+    This:egpMaterial(Icon, Material)
+    This:egpParent(Icon, Box)
+    return array(Box, Icon)
+}
+
+## LIST Functions ##
+
+function wirelink:setList(Key:string, Table:table) {
+    RegisteredEGPs[This:id(), table]["Lists",table][Key, table] = Table
+}
+
+function table wirelink:getList(Key:string) {
+    return RegisteredEGPs[This:id(), table]["Lists",table][Key, table]
+}
+
+function wirelink:addListEntry(Key:string, Array:array) {
+    This:getList(Key):pushArray(Array)
+}
+
+function wirelink:deleteListEntry(Key:string, Index) {
+    local List = This:getList(Key)
+    This:egpRemove(List[Index, array])
+    
+    List:removeArray(Index)
+}
+
+function wirelink:egpCustomList(Key:string, EntryFunction:string, Length) { # Requires function return to be an array of indexes
+    local Table = table()
+    for(I=1,Length) {
+        local ObjArray = EntryFunction(This, Key, I, 1)[array] # (Key, Index, ShouldCreate)
+        Table:pushArray(ObjArray)
+    }
+    
+    This:setList(Key, Table)
+}
+
+function wirelink:egpUpdateCustomList(Key:string, EntryFunction:string, Length) {
+    local List = This:getList(Key)
+    
+    local G = List:count()
+    for(I=max(G, Length),1,-1) {
+        if(I > G) {
+            local Array = EntryFunction(This, Key, G + Length - I + 1, 1)[array]
+            This:addListEntry(Key, Array)
+            continue
+        }
+        if(I > Length) {
+            This:deleteListEntry(Key, I)
+            continue
+        }
+        EntryFunction(This, Key, I, 0)
+    }
+}
+
+#Subprocess Edition
+function wirelink:egpCustomListProcess(Key:string, EntryFunction:string, Length) {
+    addSubprocess("egpCustomList", table("Key"=Key,"Func"=EntryFunction, "Length"=Length, "EGP"=This))
+}
+
+function wirelink:egpUpdateCustomListProcess(Key:string, EntryFunction:string, Length) {
+    addSubprocess("egpUpdateCustomList", table("Key"=Key,"Func"=EntryFunction, "Length"=Length, "EGP"=This))
+}
+
+#Subprocess edition
+function number egpCustomList(Index, Params:table) { # Requires ( EGP, Key, Func, Length ) 
+    local This = Params["EGP", wirelink]
+    local Key = Params["Key",string]
+    local EntryFunction = Params["Func",string]
+    local Length = Params["Length", number]
+    
+    if(Index == 1) {
+        HEGPCLT = table()
+    }
+    
+    if(Index > Length) {
+        This:setList(Key, HEGPCLT)
+        return 1
+    } else {
+        local ObjArray = EntryFunction(This, Key, Index, 1)[array] # (Key, Index, ShouldCreate)
+        HEGPCLT:pushArray(ObjArray)
+        return 0
+    }
+}
+
+function number egpUpdateCustomList(Index, Params:table) { # Requires ( EGP, Key, Func, Length ) 
+    local This = Params["EGP",wirelink]
+    local Key = Params["Key",string]
+    local EntryFunction = Params["Func", string]
+    local Length = Params["Length", number]
+    local List = This:getList(Key)
+    local G = List:count()
+    
+    if(!This:entity():isValid()) { return 1 }
+    
+    if(Index > max(G, Length)) {
+        return 1
+    }
+    
+    if(Index > Length) {
+        This:deleteListEntry(Key, Index)
+        return -1
+    }
+    
+    if(G < Index) {
+        local Array = EntryFunction(This, Key, Index, 1)[array]
+        This:addListEntry(Key, Array)
+        return 0
+    }
+    
+    EntryFunction(This, Key, Index, 0)
+    
+    return 0
+}
+
+##
+
+## GROUP Functions ##  ## Lists and Groups wont function together 
+
+function wirelink:setGroup(Key:string) {
+    RegisteredEGPs[This:id(), table]["Groups", table][Key,array] = array()
+    RegisteredEGPs[This:id(), table]["CurrentGroup", string] = Key
+}
+
+function wirelink:addGroup(Key:string) {
+    RegisteredEGPs[This:id(), table]["Groups", table][Key,array] = array()
+    RegisteredEGPs[This:id(), table]["CurrentGroup", string] = Key
+}
+
+function number wirelink:egpGroupExists(Key:string) {
+    if(RegisteredEGPs[This:id(), table]["Groups", table][Key,array]:count() > 0) {
+        return 1
+    }
+    return 0
+}
+
+function wirelink:egpStartGroup(Key:string) {
+    This:addGroup(Key)
+}
+
+function wirelink:egpEndGroup(Key:string) {
+    RegisteredEGPs[This:id(), table]["CurrentGroup", string] = ""
+}
+
+function wirelink:egpAddToGroup(Index, Key:string) {
+    RegisteredEGPs[This:id(), table]["Groups",table][Key,array]:pushNumber(Index)
+}
+
+function array wirelink:getGroup(Key:string) {
+    return RegisteredEGPs[This:id(), table]["Groups", table][Key,array]
+}
+
+function wirelink:egpClearGroup(Key:string) {
+    local Group = This:getGroup(Key)
+    This:egpRemove(Group)
+    
+    RegisteredEGPs[This:id(), table]["Groups", table]:removeArray(Key)
+}
+
+function wirelink:egpShowGroup(Key:string) {
+    local Group = This:getGroup(Key)
+    
+    for(I=1,Group:count()) {
+        This:egpAlpha(Group[I,number], 255)
+    }
+}
+
+function wirelink:egpHideGroup(Key:string) {
+    local Group = This:getGroup(Key)
+    
+    for(I=1,Group:count()) {
+        This:egpAlpha(Group[I,number], 0)
+    }
+}
+
+## KEY Functions ##
+
+function wirelink:assign(Key:string, Array:array) {
+    RegisteredEGPs[This:id(), table]["Objects", table][Key, array] = Array
+}
+
+function wirelink:assign(Key:string, Number:number) {
+    This:assign(Key, array(Number))
+}
+
+function array wirelink:getObj(Key:string) {
+    return RegisteredEGPs[This:id(), table]["Objects", table][Key, array]
+}
+
+function number wirelink:getObj(Key:string, Index) {
+    return RegisteredEGPs[This:id(), table]["Objects", table][Key, array][Index, number]
+}
+
+function wirelink:deleteObj(Key:string) {
+    This:egpRemove(This:getObj(Key))
+    RegisteredEGPs[This:id(), table]["Objects", table]:removeArray(Key)
+}
+
+## EDIT Functions
+
+function wirelink:egpSetText(Key:string, Index, Text:string) {
+    This:egpSetText(This:getObj(Key, Index), Text)
+}
+
+function wirelink:egpSetTextShadow(Key:string, Index, Text:string) {
+    This:egpSetText(This:getObj(Key, Index), Text)
+    This:egpSetText(This:getObj(Key, Index+1), Text)
+}
+
+## INTERACTION Functions ##
+
+function number wirelink:inCursor(Index, Player:entity) {
+    local Pos = This:egpPos(Index)
+    local Size = This:egpSize(Index)
+    
+    if(This:egpAlpha(Index) == 0) { return 0 }
+    
+    if (inrange(This:egpCursor(Player), Pos - (Size/2), Pos + (Size/2))) {
+        return 1
+    } 
+    
+    return 0
+}
+
+##
+
+## TOOL Functions ##
+
+function vector2 egpGrid(X, Y) {
+    return vec2(X, Y) * 16
+}
+
+function vector2 egpGrid(X, Y, Grid) {
+    return vec2(X, Y) * Grid
+}
+
+#
+
+function addTheme(Name:string, Color:vector) {
+    Themes["Theme" + Name, vector] = Color
+}
+
+function vector theme(Name:string) {
+    return Themes["Theme" + Name, vector]
+}
+
+##
+    
+    timer("updatePlayers", 5000)
+    
+function fetchEGP() {
+    if(EGP:entity():isValid()) { return }
+    
+    findInSphere(entity():pos(), 500)
+    findClipToClass("gmod_wire_egp_emitter")
+    
+    local Ents = findToArray()
+    if(Ents:count() <= 0) { 
+        hint("Please connect an EGP Emitter.", 5)
+        timer("RefetchEGP", 5000)
+        return
+    } 
+    
+    entity():createWire(Ents[1,entity], "EGP", "wirelink")
+    
+    hint("EGP Connected!", 3)
+}
+
+function updateExpanded(Index) {
+    EGP:egpPos(EGP:getObj("ExpandedParent",1), egpGrid(16, 5.25 + Index * 1.5))
+    
+    local Ply = players()[Index, entity]
+    local Data = PlayerData[Ply:steamID(), table]
+    
+    EGP:egpSetTextShadow("ExpandedEntityCount", 1, "Entities - " + Data["EntityCount",number])
+    EGP:egpSetTextShadow("ExpandedPhysicsCount", 1, "Physical Entities - " + (Data["EntityCount",number]-Data["Holograms",number]))
+    EGP:egpSetTextShadow("ExpandedParentedCount", 1, "Parented - " + Data["Parented",number])
+    EGP:egpSetTextShadow("ExpandedUnfrozenCount", 1, "Unfrozen - " + Data["Unfrozen",number])
+    EGP:egpSetTextShadow("ExpandedHologramsCount", 1, "Holograms - " + Data["Holograms",number])
+    
+    EGP:egpSetTextShadow("ExpandedConstraintCount", 1, "Constraints - " + Data["Constraints",number])
+    EGP:egpSetTextShadow("ExpandedWeldsCount", 1, "Welds - " + Data["Welded",number])
+    EGP:egpSetTextShadow("ExpandedNoCollidesCount", 1, "No-Collides - " + Data["NoCollides",number])
+    EGP:egpSetTextShadow("ExpandedOtherCount", 1, "Other - " + Data["Other",number])
+    
+    EGP:egpSetTextShadow("ExpandedE2sCount", 1, "E2s - " + Data["E2Count",number])
+    EGP:egpSetTextShadow("ExpandedTotalCPU", 1, "Total CPU - " + Data["TotalE2CPU",number] + "us")
+    
+    EGP:egpSetTextShadow("ExpandedStarfallCount", 1, "Starfalls - " + Data["StarfallCount",number])
+    EGP:egpSetTextShadow("ExpandedStarfallHolograms", 1, "Holograms - " + Data["StarfallHoloCount",number])
+    
+    
+    EGP:egpUpdateCustomListProcess("ReportGraph", "reportGraph", Data["EntityCountHistory",array]:count())
+}
+
+function array wirelink:egpGraphPoints(EntityPos:vector2, ConstraintPos:vector2, ScorePos:vector2, Size:vector2, EntityColor:vector, ConstraintColor:vector) {
+    local ScoreBox = This:egpAdvRoundedBox(ScorePos, Size, vec(255), 1)
+    local EntityBox = This:egpAdvRoundedBox(EntityPos, Size, EntityColor, 2)
+    local ConstraintBox = This:egpAdvRoundedBox(ConstraintPos, Size*0.75, ConstraintColor, 1)
+    
+    return array(EntityBox, ConstraintBox, ScoreBox)
+}
+
+function array wirelink:reportGraph(Key:string, Index, ShouldCreate) {
+    local Array = This:getList(Key)[Index, array]
+    local Player = players()[ExpandedIndex, entity]
+    local PlyData = PlayerData[Player:steamID(),table]
+    
+    local Min = 0
+    local Max = max(PlyData["EntityCountHistoryMax", number], PlyData["ConstraintCountHistoryMax", number])
+    
+    local EntityHistory = PlyData["EntityCountHistory",array]
+    
+    local EntityHeight = (((EntityHistory[EntityHistory:count()-(Index-1),number]-Min)/(max(Max-Min,1)))-0.5) * 2
+    
+    local EntityPos = egpGrid(26 + (18/EntityHistory:count()) * (Index-1), 5.25 + (ExpandedIndex * 1.5) + (-1.5*EntityHeight))
+    
+    local ConstraintHistory = PlyData["ConstraintCountHistory",array]
+    
+    local ConstraintHeight = (((ConstraintHistory[ConstraintHistory:count()-(Index-1),number]-Min)/(max(Max-Min,1)))-0.5) * 2
+    
+    local ConstraintPos = egpGrid(26 + (18/ConstraintHistory:count()) * (Index-1), 5.25 + (ExpandedIndex * 1.5) + (-1.5*ConstraintHeight))
+    
+    
+    local ScoreHistory = PlyData["ScoreHistory",array]
+    
+    local ScoreHeight = (((ScoreHistory[ScoreHistory:count()-(Index-1),number]-0)/(max(10-0,1)))-0.5) * 2
+    
+    local ScorePos = egpGrid(26 + (18/ScoreHistory:count()) * (Index-1), 5.25 + (ExpandedIndex * 1.5) + (-1.5*ScoreHeight))
+    
+    
+    if(ShouldCreate) {
+        Array = This:egpGraphPoints(EntityPos, ConstraintPos, ScorePos, egpGrid(0.25,0.25), vec(0,150,255), vec(255,0,0))
+    } else {
+        This:egpPos(Array[1,number], EntityPos)
+        This:egpPos(Array[2,number], ConstraintPos)
+        This:egpPos(Array[3,number], ScorePos)
+    }
+        
+    return Array
+}
+
+#
+
+function array wirelink:egpPlayerReport(Pos:vector2, Size:vector2, Player:entity) {
+    local Box = This:egpAdvRoundedBox(Pos, Size, theme("B"), 8)
+    
+    local Visual = This:egpAdvRoundedBox(vec2(-Size:x()/2 + Size:x()/8,0), vec2(Size:x()/4, Size:y()), teamColor(Player:team())*0.8, 8)
+    This:egpParent(Visual, Box)
+    
+    local Text = This:egpAdvTextShadow(Player:name(), vec2(-Size:x()/2 + 8, -8), 16, 1)
+    This:egpParent(Text[1,number], Box)
+    
+    local EntityReport = This:egpAdvTextLayout("", vec2(-Size:x()/5, -16), vec2(Size:x()/2.5, 32), 16)
+    
+    local ConstraintReport = This:egpAdvTextLayout("Loading data for this player...", vec2(Size:x()/6 - 8, -16), vec2(Size:x()/3 - 8, 32), 16)
+    
+    local Warning = This:egpAdvTextLayout("", vec2(-Size:x()/3.3, -16), vec2(64, 32), 24)
+    
+    
+    This:egpParent(EntityReport, Box)
+    This:egpAlign(EntityReport, 2, 1)
+    
+    This:egpParent(ConstraintReport, Box)
+    This:egpAlign(ConstraintReport, 2, 1)
+    
+    This:egpParent(Warning, Box)
+    This:egpAlign(Warning, 1, 1)
+    
+    return array(Box):add(Text):add(array(EntityReport, Visual, ConstraintReport, Warning))
+}
+
+function array wirelink:reportList(Key:string, Index, ShouldCreate) {
+    local Array = This:getList(Key)[Index, array]
+    local Player = players()[Index, entity]
+    local Shifted = Index > ExpandedIndex
+    if(ShouldCreate) {
+        Array = This:egpPlayerReport(egpGrid(16, 2 + Index * 1.5 + (5*Shifted)), egpGrid(60, 1.25), Player)
+    } else {
+        This:egpPos(Array[1,number], egpGrid(16, 2 + Index * 1.5 + (5*Shifted)))
+        This:egpSetText(Array[2,number], Player:name())
+        This:egpSetText(Array[3,number], Player:name())
+        
+        This:egpColor(Array[5,number], teamColor(Player:team())*0.8)
+        
+        local PlyData = PlayerData[Player:steamID(),table]
+
+        This:egpSetText(Array[4,number], "Entities : " + PlyData["EntityCount",number] + "      Unfrozen : " + PlyData["Unfrozen",number] + "      Parented : " + PlyData["Parented", number])
+        This:egpSetText(Array[6,number], "Constraints : " + PlyData["Constraints",number] + "      Welds : " + PlyData["Welded",number])
+        
+        if(PlyData["Score", number] > ScoreWarningLine) {
+            This:egpColor(Array[1,number], vec(135,0,140))
+        } else {
+            This:egpColor(Array[1,number], theme("B"))
+        }
+    
+    }
+    
+    if(Index == players():count()) { updateExpanded(ExpandedIndex) }
+        
+    return Array
+}
+
+function nextExpanded() {
+    if(ExpandQueue:count() <= 0) {
+        if(ExpandStep > players():count()) {
+            ExpandStep = 1
+        }
+        ExpandedIndex = ExpandStep
+        ExpandStep += 1
+    } else {
+        if(ExpandStep > ExpandQueue:count()) {
+            ExpandStep = 1
+        }
+        ExpandedIndex = ExpandQueue[ExpandStep, number]
+        ExpandStep += 1
+    }
+}
+
+function initialiseEGP() {
+    EGP:egpClear()
+    
+    registerEGP(EGP)
+    
+    addTheme("A", vec(100,0,140))
+    addTheme("B", theme("A")*0.75)
+    addTheme("C", theme("A")*0.5)
+    
+    local I = EGP:egpAdvRoundedBox(egpGrid(16,16.5), egpGrid(64,31), vec4(theme("C"),255))
+    EGP:egpMaterial(I, "vgui/gradient-u")
+    
+    EGP:egpAdvRoundedBox(egpGrid(16,1), egpGrid(64,2), theme("A"))
+    EGP:egpAdvTextShadow("Prop-Report", egpGrid(-15.5,0), 24, 2)
+    EGP:egpAdvTextShadow("By H2n9", egpGrid(-9.5,1.25), 10, 2)
+
+    EGP:egpCustomListProcess("ReportList", "reportList", players():count())
+    
+    #
+    
+    local Parent = EGP:egpAdvRoundedBox(egpGrid(16, 6.75), egpGrid(56, 4), vec4(theme("C"),150))
+    EGP:assign("ExpandedParent", Parent)
+    
+    #
+    
+    local TxtT = EGP:egpAdvText("Entities - 0", egpGrid(-27, -1.75), 13)
+    EGP:assign("ExpandedEntityCount", TxtT)
+    EGP:egpParent(TxtT, Parent)
+    
+    local Txt = EGP:egpAdvTextShadow("Physical Entities - 0", egpGrid(-26, -0.75), 10, 1)
+    EGP:assign("ExpandedPhysicsCount", Txt)
+    EGP:egpParent(Txt[1,number], Parent)
+    
+    local Txt = EGP:egpAdvTextShadow("Parented - 0", egpGrid(-26, 0), 10, 1)
+    EGP:assign("ExpandedParentedCount", Txt)
+    EGP:egpParent(Txt[1,number], Parent)
+    
+    local Txt = EGP:egpAdvTextShadow("Unfrozen - 0", egpGrid(-26, 0.75), 10, 1)
+    EGP:assign("ExpandedUnfrozenCount", Txt)
+    EGP:egpParent(Txt[1, number], Parent)
+    
+    #
+    
+    local I = EGP:getAvailableIndex()
+    EGP:egpLine(I, egpGrid(-19.5, -1.75), egpGrid(-19.5, 1.75))
+    EGP:egpParent(I, Parent)
+    
+    #    
+    
+    local TxtT = EGP:egpAdvText("Constraints - 0", egpGrid(-19, -1.75), 13)
+    EGP:assign("ExpandedConstraintCount", TxtT)
+    EGP:egpParent(TxtT, Parent)
+    
+    local Txt = EGP:egpAdvTextShadow("Welds - 0", egpGrid(-18, -0.75), 10, 1)
+    EGP:assign("ExpandedWeldsCount", Txt)
+    EGP:egpParent(Txt[1,number], Parent)
+    
+    local Txt = EGP:egpAdvTextShadow("No-Collides - 0", egpGrid(-18, 0), 10, 1)
+    EGP:assign("ExpandedNoCollidesCount", Txt)
+    EGP:egpParent(Txt[1,number], Parent)
+    
+    local Txt = EGP:egpAdvTextShadow("Other - 0", egpGrid(-18, 0.75), 10, 1)
+    EGP:assign("ExpandedOtherCount", Txt)
+    EGP:egpParent(Txt[1,number], Parent)
+    
+    #
+    
+    local I = EGP:getAvailableIndex()
+    EGP:egpLine(I, egpGrid(-11.5, -1.75), egpGrid(-11.5, 1.75))
+    EGP:egpParent(I, Parent)
+    
+    #
+    
+    local TxtT = EGP:egpAdvText("E2s - 0", egpGrid(-11, -1.75), 13)
+    EGP:assign("ExpandedE2sCount", TxtT)
+    EGP:egpParent(TxtT, Parent)
+    
+    local Txt = EGP:egpAdvTextShadow("Total CPU - 0us", egpGrid(-10, -0.75), 10, 1)
+    EGP:assign("ExpandedTotalCPU", Txt)
+    EGP:egpParent(Txt[1,number], Parent)
+    
+    local Txt = EGP:egpAdvTextShadow("Holograms - 0", egpGrid(-10, 0), 10, 1)
+    EGP:assign("ExpandedHologramsCount", Txt)
+    EGP:egpParent(Txt[1, number], Parent)
+    
+    #
+    
+    local I = EGP:getAvailableIndex()
+    EGP:egpLine(I, egpGrid(-3.5, -1.75), egpGrid(-3.5, 1.75))
+    EGP:egpParent(I, Parent)
+    
+    #
+    local TxtT = EGP:egpAdvText("Starfalls - 0", egpGrid(-3, -1.75), 13)
+    EGP:assign("ExpandedStarfallCount", TxtT)
+    EGP:egpParent(TxtT, Parent)
+    
+    local Txt = EGP:egpAdvTextShadow("Holograms - 0", egpGrid(-2, -0.75), 10, 1)
+    EGP:assign("ExpandedStarfallHolograms", Txt)
+    EGP:egpParent(Txt[1,number], Parent)
+    
+    #
+    
+    local I = EGP:getAvailableIndex()
+    EGP:egpLine(I, egpGrid(5.5, -1.75), egpGrid(5.5, 1.75))
+    EGP:egpParent(I, Parent)
+    
+    #
+    
+    local I = EGP:getAvailableIndex()
+    EGP:egpLine(I, egpGrid(10, -1.5), egpGrid(10, 1.5))
+    EGP:egpParent(I, Parent)
+    
+    local I = EGP:getAvailableIndex()
+    EGP:egpLine(I, egpGrid(10, 1.5), egpGrid(27, 1.5))
+    EGP:egpParent(I, Parent)
+    
+    local T = EGP:egpAdvTextLayout("Score", egpGrid(6.5, -1.25), egpGrid(3, 1), 10)
+    EGP:egpAlign(T, 2, 1)
+    EGP:egpParent(T, Parent)
+    
+    local T = EGP:egpAdvTextLayout("Entities", egpGrid(6.5, -0.5), egpGrid(3, 1), 10)
+    EGP:egpAlign(T, 2, 1)
+    EGP:egpColor(T, vec(0,150,255))
+    EGP:egpParent(T, Parent)
+    
+    local T = EGP:egpAdvTextLayout("Constraints", egpGrid(6.5, 0.25), egpGrid(3, 1), 10)
+    EGP:egpParent(T, Parent)
+    EGP:egpAlign(T, 2, 1)
+    EGP:egpColor(T, vec(255,0,0))
+    
+    EGP:egpCustomListProcess("ReportGraph", "reportGraph", 0)
+}
+
+function array findPlayerEntities(Ply:entity) {
+    findClearWhiteList()
+    findIncludePlayerProps(Ply)
+    findExcludePlayer(Ply)
+    findExcludeEntities(players())
+    findExcludeClass("weapon")
+    findExcludeClass("env_sprite")
+    findExcludeClass("func_door")
+    findExcludeClass("gmod_tool")
+    findExcludeClass("gmod_camera")
+    findExcludeClass("func_button")
+    findExcludeClass("gmod_hands")
+    findExcludeClass("remotecontroller")
+    findExcludeClass("laserpointer")
+    findExcludeClass("fin_2")
+        
+    findInSphere(Ply:pos(),10000000)
+    
+    return findToArray()
+}
+
+function number updatePlayer(Index, Params:table) {
+    local Ply = Params["Ply",entity]
+    
+    if(Index == 1) { Params["Entities",array] = findPlayerEntities(Ply) }
+    
+    local Entities = Params["Entities",array]
+    
+    # Throttle Rate so that CPU stays below 1000us
+    CRate = round(clamp(100 - max(0,(cpuUsage()*1000000)-500)/15, 40, 100))
+    
+    if(Index > Entities:count()) {
+        local Key = Ply:steamID()
+        
+        if(!PlayerData:exists(Key)) { PlayerData[Key, table] = table() } 
+        
+        local PlyData = PlayerData[Key,table]
+        
+        PlyData["Holograms", number] = Params["Holograms", number]
+        
+        PlyData["EntityCount", number] = Entities:count()
+        PlyData["Constraints", number] = floor(Params["Constraints", number]/2)
+        PlyData["Welded", number] = floor(Params["Welded", number]/2)
+        PlyData["NoCollides", number] = floor(Params["NoCollides", number]/2)
+        PlyData["Other", number] = floor((Params["Constraints", number] - Params["Welded", number] - Params["NoCollides", number])/2)
+        PlyData["Parented", number] = Params["Parented",number]
+        PlyData["Unfrozen", number] = Params["Unfrozen",number]
+        PlyData["E2Count", number] = Params["E2Count",number] 
+        PlyData["TotalE2CPU", number] = round(Params["TotalE2CPU",number])
+        PlyData["StarfallCount", number] = Params["StarfallCount",number]
+        PlyData["StarfallHoloCount", number] = Params["StarfallHoloCount",number]
+        
+        # Internal score calculation - Not intended as a judge of actual effect of performance
+        
+        local Score = 0
+        
+        # Total Physical Props
+        Score += (PlyData["EntityCount", number] - PlyData["Holograms", number])/150
+        # Total Holograms
+        Score += PlyData["Holograms", number] / 250
+        # Props that arent parented but are unfrozen (somewhat inaccurate --> may underestimate)
+        Score += max((PlyData["EntityCount", number]-PlyData["Parented", number])-(PlyData["EntityCount", number]-PlyData["Unfrozen", number]), 0) / 40
+        # All Welds
+        Score += PlyData["Welded", number] / 60
+        # Welds that are unfrozen
+        Score += (Params["UnfrozenWelds",number]/2)/20
+        # Nocollides
+        Score += (PlyData["NoCollides", number])/200
+        # Non Weld / No Collide Constraints
+        Score += (PlyData["Constraints", number] - PlyData["Welded", number] - PlyData["NoCollides", number])/50
+        # E2 CPU usage
+        Score += PlyData["TotalE2CPU", number] / 800
+        
+        Score = round(Score*10)/10
+        Score = clamp(Score, 0, 10)
+        
+        PlyData["Score",number] = Score
+        
+        if(Score > ScoreWarningLine) {
+            ExpandQueue:pushNumber(Params["PIndex", number])
+        }
+        
+        #
+        
+        if(!PlyData:exists("EntityCountHistory")) { PlyData["EntityCountHistory",array] = array() }
+        PlyData["EntityCountHistory",array]:unshiftNumber(Entities:count())
+        PlyData["EntityCountHistoryMin",number] = PlyData["EntityCountHistory",array]:min()
+        PlyData["EntityCountHistoryMax",number] = PlyData["EntityCountHistory",array]:max()
+        if(PlyData["EntityCountHistory",array]:count() > 20) { PlyData["EntityCountHistory",array]:pop() }
+        
+        if(!PlyData:exists("ConstraintCountHistory")) { PlyData["ConstraintCountHistory",array] = array() }
+        PlyData["ConstraintCountHistory",array]:unshiftNumber(PlyData["Constraints", number])
+        PlyData["ConstraintCountHistoryMin",number] = PlyData["ConstraintCountHistory",array]:min()
+        PlyData["ConstraintCountHistoryMax",number] = PlyData["ConstraintCountHistory",array]:max()
+        if(PlyData["ConstraintCountHistory",array]:count() > 20) { PlyData["ConstraintCountHistory",array]:pop() }
+        
+        if(!PlyData:exists("ScoreHistory")) { PlyData["ScoreHistory",array] = array() }
+        local ScoreHistory = PlyData["ScoreHistory",array]
+        ScoreHistory:unshiftNumber(PlyData["Score", number])
+        if(ScoreHistory:count() > 20) { ScoreHistory:pop() }
+        
+        
+        if(Params["Last",number]) {
+            timer("updatePlayers", 5000)
+            if(ExpandQueue:count() <= 0) {
+                ExpandQueue = array()
+            }
+        }
+        
+        return 1
+    }
+    
+    local Entity = Entities[Index,entity]
+    
+    if(Entity:type() == "gmod_wire_hologram") {
+        Params["Holograms", number] = Params["Holograms", number] + 1
+        return 0
+    }
+    
+    if(Entity:parent() != noentity()) {
+         Params["Parented",number] = Params["Parented",number] + 1
+    }
+    
+    Params["Unfrozen",number] = Params["Unfrozen",number] + !Entity:isFrozen()
+    
+    Params["Constraints",number] = Params["Constraints",number] + Entity:hasConstraints()
+    
+    local Welds = Entity:hasConstraints("Weld")
+    Params["Welded",number] = Params["Welded",number] + Welds
+    if(Welds > 0) { if(!Entity:isFrozen()) { Params["UnfrozenWelds",number] = Params["UnfrozenWelds",number] + 1 } }
+    
+    Params["NoCollides",number] = Params["NoCollides",number] + Entity:hasConstraints("NoCollide")
+    
+    if(Entities[Index,entity]:type() == "gmod_wire_expression2") {
+        Params["E2Count",number] = Params["E2Count",number] + 1
+        Params["TotalE2CPU",number] = Params["TotalE2CPU",number] + (Entity:cpuUsage()*1000000)
+        return 0
+    }
+    
+    if(Entities[Index,entity]:type() == "starfall_processor") {
+        Params["StarfallCount",number] = Params["StarfallCount",number] + 1
+        return 0
+    }
+    
+    if(Entities[Index,entity]:type() == "starfall_hologram") {
+        Params["StarfallHoloCount",number] = Params["StarfallHoloCount",number] + 1
+        return 0
+    }
+    
+    return 0
+}
+    
+    fetchEGP()
+
+}
+
+if(dupefinished()) {
+    reset()    
+}
+
+if(changed(EGP)) {
+    initialiseEGP()
+}
+
+if(clk("updatePlayers")) {
+    for(I=1,players():count()) {
+        if(I == players():count()) {
+            addSubprocess("updatePlayer", table("Ply"=players()[I,entity], "PIndex"=I, "Last" = 1), table("Rate"=1))
+        } else {
+            addSubprocess("updatePlayer", table("Ply"=players()[I,entity], "PIndex"=I), table("Rate"=1))
+        }
+    }
+    nextExpanded()
+    EGP:egpUpdateCustomListProcess("ReportList", "reportList", players():count())
+    ExpandQueue = array()
+}
+
+if(clk("RefetchEGP")) {
+    fetchEGP()
+}
+
+updateSubprocesses()
