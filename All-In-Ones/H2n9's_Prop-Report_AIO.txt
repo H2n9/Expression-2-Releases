@@ -12,7 +12,7 @@ interval(80)
 ##
 # H2n9's Prop-Report
 # https://github.com/H2n9/Expression-2-Releases
-# V1.0 AIO
+# V1.01 AIO
 ##
 
 ## All-In-One edition with all includes copy-pasted into code for easier distribution
@@ -861,6 +861,12 @@ function initialiseEGP() {
     
     #
     
+    timer("InitEGP2", 500)
+}
+
+function initialiseEGP2() {
+    local Parent = EGP:getObj("ExpandedParent")[1,number]
+    
     local TxtT = EGP:egpAdvText("E2s - 0", egpGrid(-11, -1.75), 13)
     EGP:assign("ExpandedE2sCount", TxtT)
     EGP:egpParent(TxtT, Parent)
@@ -1083,6 +1089,10 @@ if(dupefinished()) {
 
 if(changed(EGP)) {
     initialiseEGP()
+}
+
+if(clk("InitEGP2")) {
+    initialiseEGP2()
 }
 
 if(clk("updatePlayers")) {
