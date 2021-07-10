@@ -1,0 +1,165 @@
+@name H2Civ UnitAnimations
+@inputs 
+@outputs 
+@persist AnimTypes:table AnimQueue:table
+@trigger 
+
+AnimTypes = table()
+
+AnimTypes["Move",table] = table()
+
+AnimTypes["CombineSoldierAttack", table] = table( table("Frame"=0, "Type"="Anim", "Anim"="combatidle1_smg1"),
+                                           table("Frame"=0, "Type"="Sound", "Sound"="npc/combine_soldier/vo/contactconfim.wav", "SoundDuration"=0.75, "SoundIndex"=2),
+                                        
+                                           table("Frame"=5, "Type"="Sound", "Sound"="weapons/smg1/smg1_fire1.wav", "SoundDuration"=0.3),
+                                           table("Frame"=5, "Type"="Anim", "Anim"="shootsmg1s"),
+                                        
+                                           table("Frame"=7, "Type"="Sound", "Sound"="weapons/smg1/smg1_fire1.wav", "SoundDuration"=0.3),
+                                           table("Frame"=7, "Type"="Anim", "Anim"="shootsmg1s"),
+                                           table("Frame"=10, "Type"="Sound", "Sound"="weapons/smg1/smg1_fire1.wav", "SoundDuration"=0.3),
+                                           table("Frame"=10, "Type"="Anim", "Anim"="shootsmg1s"),
+                                        
+                                           table("Frame"=18, "Type"="Sound", "Sound"="weapons/smg1/smg1_fire1.wav", "SoundDuration"=0.3),
+                                           table("Frame"=18, "Type"="Anim", "Anim"="shootsmg1s"),
+                                           table("Frame"=20, "Type"="Sound", "Sound"="weapons/smg1/smg1_fire1.wav", "SoundDuration"=0.3),
+                                           table("Frame"=20, "Type"="Anim", "Anim"="shootsmg1s"),
+                                           table("Frame"=22, "Type"="Sound", "Sound"="weapons/smg1/smg1_fire1.wav", "SoundDuration"=0.3),
+                                           table("Frame"=22, "Type"="Anim", "Anim"="shootsmg1s"),
+                                        
+                                           table("Frame"=30, "Type"="Sound", "Sound"="npc/combine_soldier/vo/coverme.wav", "SoundDuration"=0.75, "SoundIndex"=2),
+                                           table("Frame"=33, "Type"="Anim", "Anim"="reload"),
+                                           table("Frame"=34, "Type"="Sound", "Sound"="weapons/smg1/smg1_reload.wav", "SoundDuration"=1),
+                                           table("Frame"=52, "Type"="Anim", "Anim"="idle1"))
+
+AnimTypes["CombineSoldierDefend", table] = table( table("Frame"=0, "Type"="Anim", "Anim"="combat_stand_to_crouch"),
+                                               table("Frame"=10, "Type"="Anim", "Anim"="crouchidle"),
+                                        
+                                               table("Frame"=14, "Type"="Sound", "Sound"="weapons/smg1/smg1_fire1.wav", "SoundDuration"=0.3),
+                                               table("Frame"=14, "Type"="Anim", "Anim"="shootsmg1c"),
+                                        
+                                               table("Frame"=20, "Type"="Sound", "Sound"="weapons/smg1/smg1_fire1.wav", "SoundDuration"=0.3),
+                                               table("Frame"=20, "Type"="Anim", "Anim"="shootsmg1c"),
+                                               table("Frame"=26, "Type"="Sound", "Sound"="weapons/smg1/smg1_fire1.wav", "SoundDuration"=0.3),
+                                               table("Frame"=26, "Type"="Anim", "Anim"="shootsmg1c"),
+                                               table("Frame"=34, "Type"="Anim", "Anim"="crouch_to_combat_stand"),
+                                               table("Frame"=52, "Type"="Anim", "Anim"="idle1"))
+
+AnimTypes["AntlionAttack", table] = table( table("Frame"=0, "Type"="Anim", "Anim"="distract_arrived"),
+                                           table("Frame"=0, "Type"="Sound", "Sound"="NPC_Antlion.Distracted", "SoundDuration"=1),
+                                            table("Frame"=22, "Type"="Anim", "Anim"="attack2"),
+                                            table("Frame"=22, "Type"="Sound", "Sound"="NPC_Antlion.MeleeAttackSingle", "SoundDuration"=1),
+                                            table("Frame"=40, "Type"="Anim", "Anim"="attack1"),
+                                            table("Frame"=40, "Type"="Sound", "Sound"="NPC_Antlion.MeleeAttackSingle", "SoundDuration"=1),
+                                            table("Frame"=52, "Type"="Anim", "Anim"="distractidle4"))
+
+AnimTypes["CombineScoutAttack", table] = table( table("Frame"=0, "Type"="Anim", "Anim"="standtoshootpistol"),
+                                           table("Frame"=0, "Type"="Sound", "Sound"="npc/combine_soldier/vo/contactconfim.wav", "SoundDuration"=0.75, "SoundIndex"=2),
+                                           table("Frame"=4, "Type"="Sound", "Sound"="npc/combine_soldier/vo/off3.wav", "SoundDuration"=0.2, "SoundIndex"=3),
+                                           table("Frame"=5, "Type"="Sound", "Sound"="weapons/pistol/pistol_fire2.wav", "SoundDuration"=0.3),
+                                           table("Frame"=5, "Type"="Anim", "Anim"="shootp1"),
+                                           table("Frame"=7, "Type"="Sound", "Sound"="weapons/pistol/pistol_fire2.wav", "SoundDuration"=0.3),
+                                           table("Frame"=7, "Type"="Anim", "Anim"="shootp1"),
+                                           table("Frame"=10, "Type"="Sound", "Sound"="weapons/pistol/pistol_fire2.wav", "SoundDuration"=0.3),
+                                           table("Frame"=10, "Type"="Anim", "Anim"="shootp1"),
+                                        
+                                           table("Frame"=18, "Type"="Sound", "Sound"="weapons/pistol/pistol_fire2.wav", "SoundDuration"=0.3),
+                                           table("Frame"=18, "Type"="Anim", "Anim"="shootp1"),
+                                           table("Frame"=20, "Type"="Sound", "Sound"="weapons/pistol/pistol_fire2.wav", "SoundDuration"=0.3),
+                                           table("Frame"=20, "Type"="Anim", "Anim"="shootp1"),
+                                           table("Frame"=22, "Type"="Sound", "Sound"="weapons/pistol/pistol_fire2.wav", "SoundDuration"=0.3),
+                                           table("Frame"=22, "Type"="Anim", "Anim"="shootp1"),
+                                        
+                                           table("Frame"=30, "Type"="Sound", "Sound"="npc/combine_soldier/vo/coverme.wav", "SoundDuration"=0.75, "SoundIndex"=2),
+                                           table("Frame"=33, "Type"="Anim", "Anim"="reload_pistol"),
+                                           table("Frame"=34, "Type"="Sound", "Sound"="weapons/pistol/pistol_reload1.wav", "SoundDuration"=1),
+                                           table("Frame"=34, "Type"="Sound", "Sound"="npc/combine_soldier/vo/off1.wav", "SoundDuration"=0.2, "SoundIndex"=3),
+                                           table("Frame"=46, "Type"="Anim", "Anim"="shoottostandpistol"),
+                                           table("Frame"=52, "Type"="Anim", "Anim"="pistolidle2"))
+
+AnimTypes["StriderAttack", table] = table( table("Frame"=0, "Type"="Anim", "Anim"="stand", "Rate"=1.45),
+                                           table("Frame"=9, "Type"="Sound", "Sound"="npc/strider/striderx_alert4.wav", "SoundDuration"=0.9, "SoundIndex"=2),
+                                        
+                                           table("Frame"=14, "Type"="Sound", "Sound"="npc/strider/strider_step1.wav", "SoundDuration"=0.25, "SoundIndex"=1),
+                                           table("Frame"=18, "Type"="Sound", "Sound"="npc/strider/strider_step4.wav", "SoundDuration"=0.25, "SoundIndex"=2),
+                                           table("Frame"=22, "Type"="Sound", "Sound"="npc/strider/strider_step5.wav", "SoundDuration"=0.25, "SoundIndex"=1),
+                                        
+                                           table("Frame"=24, "Type"="Sound", "Sound"="npc/strider/charging.wav", "SoundDuration"=0.4, "SoundIndex"=3),
+                                           table("Frame"=27, "Type"="Anim", "Anim"="default"),
+                                        
+                                           table("Frame"=28, "Type"="Sound", "Sound"="npc/strider/strider_minigun2.wav", "SoundDuration"=0.4),
+                                           table("Frame"=30, "Type"="Sound", "Sound"="npc/strider/strider_minigun2.wav", "SoundDuration"=0.4),
+                                           table("Frame"=32, "Type"="Sound", "Sound"="npc/strider/strider_minigun2.wav", "SoundDuration"=0.4),
+
+                                           table("Frame"=36, "Type"="Sound", "Sound"="npc/strider/strider_minigun2.wav", "SoundDuration"=0.4),
+                                           table("Frame"=38, "Type"="Sound", "Sound"="npc/strider/strider_minigun2.wav", "SoundDuration"=0.4),
+                                           table("Frame"=40, "Type"="Sound", "Sound"="npc/strider/strider_minigun2.wav", "SoundDuration"=0.4),
+                                           
+                                           table("Frame"=44, "Type"="Anim", "Anim"="crouch", "Rate"=1.45),
+                                           table("Frame"=44, "Type"="Sound", "Sound"="npc/strider/striderx_alert2.wav", "SoundDuration"=1, "SoundIndex"=3),
+                                        
+                                           table("Frame"=55, "Type"="Sound", "Sound"="npc/strider/strider_step1.wav", "SoundDuration"=0.25, "SoundIndex"=1),
+                                           table("Frame"=61, "Type"="Sound", "Sound"="npc/strider/strider_step2.wav", "SoundDuration"=0.25, "SoundIndex"=2),
+                                           table("Frame"=66, "Type"="Sound", "Sound"="npc/strider/strider_step6.wav", "SoundDuration"=0.25, "SoundIndex"=1),   
+                                        
+                                           table("Frame"=66, "Type"="Anim", "Anim"="idle01"))
+
+
+function pushUnitAnimation(Unit:table, Type:string, Params:table) {
+    local AnimTable = table("Frame"=0, "FIndex"=1, "Unit"=Unit, "ParentHolo"=Unit["ParentHolo", entity], "ParentHoloIndex"=Unit["ParentHoloIndex",number], "Frames"=AnimTypes[Type,table]):merge(Params)
+    
+    AnimQueue:pushTable(AnimTable)
+}
+
+function updateAnimations() {
+    if(AnimQueue:count() > 0) {
+        addSubprocess("updateUnitAnimQueue", table(), table("StartIndex"=AnimQueue:count(), "Increment"=-1))
+    }
+}
+
+function table:executeFrame(Anim:table, Frame:table) {
+    local Type = Frame["Type",string]
+    
+    switch(Type) {
+        case "Sound",
+        Anim["ParentHolo",entity]:soundPlay(Frame["SoundIndex",number],Frame["SoundDuration",number],Frame["Sound",string])
+        break
+        
+        case "Anim",
+        local HoloIndexes = This["HoloIndexes",array]
+        local Rate = Frame["Rate",number]
+        if(Rate == 0) { Rate = 1 }
+        for(I=1,This["Actors",number]) {
+            holoAnim(HoloIndexes[I*This["HolosPerActor", number] - max(0,This["HolosPerActor", number]-1), number], Frame["Anim",string], 0, Rate)
+        }
+        break
+    }
+}
+
+function number updateUnitAnimQueue(Index, Params:table) {
+    if(Index <=0 ) {
+        return 1
+    }
+    
+    local Anim = AnimQueue[Index, table]
+    
+    local CFrame = Anim["Frames",table][Anim["FIndex", number],table]
+    
+    while(Anim["Frame",number] >= CFrame["Frame",number]) {
+        if(Anim["Frame",number] >= CFrame["Frame",number]) {
+            Anim["Unit",table]:executeFrame(Anim, CFrame)
+            
+            Anim["FIndex", number] = Anim["FIndex", number] + 1
+            
+            if(Anim["FIndex", number] > Anim["Frames",table]:count()) {
+                AnimQueue:remove(Index)
+                return 0
+            }
+            
+            CFrame = Anim["Frames",table][Anim["FIndex", number],table]
+        }
+    }
+    
+    Anim["Frame",number] = Anim["Frame",number] + 1
+    
+    return 0
+}

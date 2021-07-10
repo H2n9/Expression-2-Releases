@@ -1,0 +1,108 @@
+@name H2Civ
+@inputs 
+@outputs 
+@persist Shared:gtable Clients State:string
+@trigger 
+@autoupdate
+
+interval(80)
+runOnLast(1)
+
+if(first()) {
+    #include "H2n9_Subprocess_V2"
+    #include "H2n9_Events_V2"
+    
+    #include "Perlin"
+    
+    Shared = gTable("H2Civ")
+    Shared:clear()
+
+function setState(NewState:string) {
+    State = NewState
+}
+
+    #include "H2Civ_Holograms"
+
+    #include "H2Civ_Modifiers"
+    #include "H2CivShared"
+    #include "H2CivShared_Notifications"
+    #include "H2CivShared_Map"
+    #include "H2CivShared_Units"
+    #include "H2CivShared_Factions"
+    #include "H2CivShared_Evolutions"
+
+    #include "H2Civ_Music"    
+    #include "H2Civ_Map"
+    #include "H2Civ_UnitAnimations"
+    #include "H2Civ_Units"
+    #include "H2Civ_Structures"
+    #include "H2Civ_Cities"
+    #include "H2Civ_Buildings"
+    #include "H2Civ_UnitActions"
+    ##include "H2Civ_EGP"
+    #include "H2Civ_Evolutions"
+    #include "H2Civ_Signals"
+    #include "H2Civ_Game"
+
+    
+    State = "Waiting"
+    
+    # should we load or generate a map
+    ShouldLoadMap = 0
+    MapFile = ""
+    
+    MusicEnabled = 1
+    
+    startPlayingTrack("Opening")
+    beginCreateMap()
+    
+function stateUpdate() {
+    switch(State) {
+        case "Waiting",
+        waitForPlayerReady()
+        break
+        
+        case "Game",
+        waitForPlayerEndTurn()
+        break
+    }
+}
+    
+    timer("waitForClientInitialise", 500)
+
+}
+
+if(last()) {
+    promptClientReset()
+    propDeleteAll()
+}
+
+if(duped()) {
+    promptClientReset()
+    reset()
+}
+
+if(dsClk()) {
+    updateSignals()
+}
+
+if(clk("waitForClientInitialise")) {
+    promptClientInitialise()
+}
+
+if(clk("delayDrawMap")) {
+    addSubprocess("drawMap", table(), table("Rate"=0.8))
+}
+
+if(!Loaded) {
+    Shared["LoadingStage",string] = CurrentSubprocess["Func",string]
+}
+
+TurnLoadingAnim+=1
+holoAng(1, ang(0,-TurnLoadingAnim*5,0))
+
+stateUpdate()
+trackUpdate()
+
+updateAnimations()
+updateSubprocesses()

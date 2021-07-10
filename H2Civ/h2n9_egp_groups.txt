@@ -1,0 +1,42 @@
+@name H2n9_EGP_Groups
+
+function wirelink:startGroup(Key:string) {
+    if(!EGPGroupStore:exists(Key)) { EGPGroupStore[Key,array] = array() }
+    EGPActiveGroup = Key
+}
+
+function wirelink:endGroup(Key:string) {
+    EGPActiveGroup = ""
+}
+
+#
+
+function wirelink:clearGroup(Key:string) {
+    addSubprocess("clearGroupProcess", table("EGP"=This, "Group"=Key))
+}
+
+#
+
+function wirelink:addToGroup(Group:string, Object:string) {
+    if(!EGPGroupStore:exists(Group)) { EGPGroupStore[Group,array] = array() }
+    EGPGroupStore[Group,array]:pushString(Object)
+}
+
+#
+
+function number clearGroupProcess(Index, Params:table) {
+    local EGP = Params["EGP", wirelink]
+    
+    if(Index == 1) { Params["Table",array] = EGPGroupStore[Params["Group",string],array] }
+    
+    local Group = Params["Table",array]
+    
+    if(Index > Group:count()) {
+        return 1
+    }
+    
+    EGP:deleteObject(Group[Index, string])
+    EGPGroupStore[Params["Group",string],array]:remove(Index)
+    
+    return -1
+}

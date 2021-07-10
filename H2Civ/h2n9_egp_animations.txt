@@ -1,0 +1,182 @@
+@name H2n9_EGP_Animations
+@inputs 
+@outputs 
+@persist
+@trigger 
+
+## Easing functions ##
+
+function number lerpEasing(Num1, Num2, I) {
+    return Num1*I + Num2*(1-I)
+}
+
+function vector2 lerpEasing(Vec1:vector2, Vec2:vector2, I) {
+    return mix(Vec1, Vec2, I)
+}
+
+function vector lerpEasing(Vec1:vector, Vec2:vector, I) {
+    return mix(Vec1, Vec2, I)
+}
+
+#
+
+function number sineEasing(Num1, Num2, I) {
+    return lerpEasing(Num1, Num2, clamp(sin(I*90),0,1))
+}
+
+function vector2 sineEasing(Vec1:vector2, Vec2:vector2, I) {
+    return lerpEasing(Vec1, Vec2, clamp(sin(I*90),0,1))
+}
+
+#
+
+function number rsineEasing(Num1, Num2, I) {
+    return lerpEasing(Num1, Num2, 1-clamp(sin((1-I)*90),0,1))
+}
+
+function vector2 rsineEasing(Vec1:vector2, Vec2:vector2, I) {
+    I = clamp(sin((1-I)*90),0,1)
+    return lerpEasing(Vec1, Vec2, 1-I)
+}
+
+function vector rsineEasing(Vec1:vector, Vec2:vector, I) {
+    return lerpEasing(Vec1, Vec2, 1-clamp(sin((1-I)*90),0,1))
+}
+
+#
+
+function vector2 outQuartEasing(Vec1:vector2, Vec2:vector2, I) {
+    return lerpEasing(Vec1, Vec2, 1 - (1-I)^4)
+}
+
+#
+
+function vector2 inOutQuartEasing(Vec1:vector2, Vec2:vector2, I) {
+    if(I < 0.5) {
+        return lerpEasing(Vec1, Vec2, 8 * I^4)
+    } else {
+        return lerpEasing(Vec1, Vec2, 1 - (-2 * I + 2)^4 / 2)
+    }
+}
+
+#
+
+function vector2 inQuartEasing(Vec1:vector2, Vec2:vector2, I) {
+    return lerpEasing(Vec1, Vec2, I^4)
+}
+
+#
+
+##
+
+function updateTransforms() {
+    if(EGPTransformQueue:count() <= 0) { return }
+    addSubprocess("updateTransformsProcess", table(), table("StartIndex"=EGPTransformQueue:count(), "Increment"=-1))
+}
+
+
+## Transform Functions
+
+function wirelink:createTransform(Key:string, Type:string, Params:table) {
+    local Table = table("EGP"=This, "Key"=Key, "Type"=Type, "Easing"="lerp"):merge(Params)
+    
+    EGPTransformQueue:pushTable(Table)
+}
+
+function wirelink:createTransformWithTime(Key:string, Type:string, Duration, Params:table) {
+    This:createTransform(Key, Type, table("StartTime"=systime(), "Duration"=Duration, "Time"=systime()):merge(Params))
+}
+
+#
+
+function wirelink:translate(Key:string, Offset:vector2, Duration, Easing:string) {
+    local StartPos = This:getObject(Key)["Pos",vector2]
+    This:createTransformWithTime(Key, "move", Duration, table("StartPos"=StartPos, "TargetPos"=StartPos+Offset, "Easing"=Easing))
+}
+
+function wirelink:translate(Key:string, Offset:vector2, Duration) {
+    This:translate(Key, Offset, Duration, "lerp")
+}
+
+#
+
+function wirelink:alphaTo(Key:string, TargetAlpha, Duration, Easing:string) {
+    local Alpha = 255
+    if(This:getObject(Key):exists("Alpha")) { Alpha = This:getObject(Key)["Alpha",number] } 
+    This:createTransformWithTime(Key, "alpha", Duration, table("StartAlpha"=Alpha, "TargetAlpha"=TargetAlpha, "Easing"=Easing))
+}
+
+function wirelink:alphaTo(Key:string, TargetAlpha, Duration) {
+    This:alphaTo(Key, TargetAlpha, Duration, "lerp")
+}
+
+##
+
+function wirelink:sizeTo(Key:string, Size:vector2, Duration, Easing:string) {
+    local StartSize = This:getObject(Key)["Size",vector2]
+    This:createTransformWithTime(Key, "size", Duration, table("StartSize"=StartSize, "TargetSize"=Size, "Easing"=Easing))
+}
+
+function wirelink:sizeTo(Key:string, Size:vector2, Duration) {
+    This:sizeTo(Key, Size, Duration, "lerp")
+}
+
+##
+
+function number updateTransformsProcess(Index, Params:table) { 
+    if(Index <= 0) {
+        return 1
+    }
+    
+    local Transform = EGPTransformQueue[Index, table]
+    
+    local This = Transform["EGP",wirelink]
+    
+    local Type = Transform["Type",string]
+    
+    local Elapsed = (systime()-Transform["StartTime", number])
+    
+    local Percent = 1-clamp(Elapsed/Transform["Duration", number],0,1)
+    
+    local Function = Transform["Easing",string]+"Easing"
+    
+    local Key = Transform["Key",string]
+    local Object = This:getObject(Transform["Key",string])
+    
+    if(!EGPObjectStore[This:id(), table]:exists(Key)) {
+        EGPTransformQueue:remove(Index)
+        return 0
+    }
+    
+    switch(Type) {
+        case "move",
+        This:resolveFlagUpdate(Key, "Pos", table( "Type"="v2", "Value"=Function(Transform["StartPos", vector2], Transform["TargetPos",vector2], Percent)[vector2] ) )
+        break
+        
+        case "size",
+        This:resolveFlagUpdate(Key, "Size", table( "Type"="v2", "Value"=Function(Transform["StartSize", vector2], Transform["TargetSize",vector2], Percent)[vector2] ) )
+        break
+        
+        case "alpha",
+        This:resolveFlagUpdate(Key, "Alpha", table( "Type"="n", "Value"=Function(Transform["StartAlpha", number], Transform["TargetAlpha",number], Percent)[number] ) )
+        break
+        
+        case "color",
+        This:resolveFlagUpdate(Key, "Color", table( "Type"="v", "Value"=Function(Transform["StartColor", vector], Transform["TargetColor",vector], Percent)[vector] ) )
+        break
+        
+        case "text",
+        
+        local Chars = round(Function(0, 1, Percent)[number] * Transform["TargetChars",number])
+        local NewText = Transform["TargetText",string]:left(Chars)
+        This:resolveFlagUpdate(Key, "Text", table( "Type"="s", "Value"=NewText ) )
+        break
+        
+    }
+    
+    if(Elapsed >= Transform["Duration",number]) {
+        EGPTransformQueue:remove(Index)
+    }
+    
+    return 0
+}

@@ -1,0 +1,17 @@
+@name H2CivShared
+@inputs 
+@outputs 
+@persist PLAYER_COLORS:array
+@trigger 
+@autoupdate
+
+PLAYER_COLORS = array(vec(250, 90, 30), vec(135, 30, 250), vec(30, 185, 250), vec(60, 200, 40))
+PLAYER_COLORS[0,vector] = vec(255,0,0)
+
+function vector2 table:getPos() {
+    return vec2(This["X",number], This["Y", number])
+}
+
+function table getClientStats(I) {
+    return Shared["Client"+I, table]["Stats",table]
+}

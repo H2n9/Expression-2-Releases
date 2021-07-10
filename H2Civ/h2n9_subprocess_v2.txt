@@ -1,0 +1,142 @@
+@name H2n9_Subprocess_V2
+@persist SubprocessQueue:table CurrentSubprocess:table IsProcessing ProcessingIndex CInc CFunc:string CParams:table CRate COnHolo COnProp GlobalSubprocessRate
+
+##
+# By H2n9
+# https://github.com/H2n9/Expression-2-Releases
+##
+
+##
+# Subprocesses allow you to quickly make queueable iterative(or no iterative) functions that run at perf() speeds.
+# Take a look at the example functions to see what it can do.
+##
+
+##
+# TIPS :
+#   - Subprocesses utilise callable strings in order to execute functions, when you want to pass a function into
+#       the addSubprocess function, you pass the functions name as a string
+#   - Subprocess functions must always return a number - look at the return codes to see what each does.
+#   - Subprocess functions require a number (Index) and table (Params) parameter
+#   - Functions do not always need to be designed for multiple iterations, 
+#       single function processes will still run very fast while also possibly being more useful for certain situations
+#       (See examples)
+#   - !!! Subprocesses are not suited for speed critical scenarios !!! A conventional perf() loop would be much faster.
+#       Where subprocesses are more useful is there ease in design and simplicity.
+#       They are however still more then fast enough for real-time applications like games etc...
+#       If you see me on a server ask me and I can demonstrate and answer any questions related to this.
+##
+
+##
+# Improvements over V1 :
+#   - Support for passing parameters to processes
+#   - No interval delay between each process (Big speedup on single function subprocesses)
+#   - Process flags
+#   - Custom increments
+#   - New return codes
+#   - Better performance and less overhead
+##
+
+##
+# FLAGS :
+#   - StartIndex    - OnHolo (holoCanCreate)
+#   - Increment     - OnProp (propCanCreate)
+#   - Rate (Decimal 0 - 1)          
+##
+# RETURN CODES :
+#   - -1    = do not increment
+#   - 0     = increment index
+#   - 1     = finish subprocess
+#   - 2     = increment and escape (useful for adding an interval based delay between iterations)
+##
+
+GlobalSubprocessRate = 1
+
+# Internal function for building a subprocess table
+function table createSubprocess(Func:string, Params:table, Flags:table) {
+    return table("Func"=Func, "Params"=Params, "Increment"=1, "StartIndex"=1, "Rate"=1, "OnHolo"=0, "OnProp"=0):merge(Flags)
+}
+
+##
+
+# Add a subprocess to the queue
+function addSubprocess(Function:string, Parameters:table, Flags:table) {
+    SubprocessQueue:pushTable(createSubprocess(Function, Parameters, Flags))
+}
+
+function addSubprocess(Function:string, Parameters:table) {
+    addSubprocess(Function, Parameters, table())    
+}
+
+##
+
+# Check if a specific function is in the queue
+function number inQueue(Function:string) {
+    for(I=1,SubprocessQueue:count()) {
+        if(SubprocessQueue[1,table]["Func",string] == Function) {
+            return 1
+        }
+    }
+    return 0
+}
+
+##
+
+function number getAndStartSubprocess() {
+    if(SubprocessQueue:count() > 0) {
+        CurrentSubprocess = SubprocessQueue[1,table]
+        SubprocessQueue:shift()
+        
+        ProcessingIndex = CurrentSubprocess["StartIndex", number]
+        
+        # Speedup global variables - intended to avoid constant table lookups
+        CInc = CurrentSubprocess["Increment", number]
+        CFunc = CurrentSubprocess["Func", string]
+        CParams = CurrentSubprocess["Params",table]
+        CRate = 100 * CurrentSubprocess["Rate",number] * GlobalSubprocessRate
+        COnHolo = CurrentSubprocess["OnHolo",number]
+        COnProp = CurrentSubprocess["OnProp",number]
+        #
+        
+        IsProcessing = 1
+        
+        return 1
+    } else {
+        return 0
+    }
+}
+
+function doCurrentSubprocess() {
+    while(perf(CRate)) {
+        if(COnHolo) { if(!holoCanCreate()) { break } }
+        if(COnProp) { if(!propCanCreate()) { break } }
+        
+        
+        local ReturnValue = CFunc(ProcessingIndex, CParams)[number] 
+        switch(ReturnValue) {
+            case -1,
+                break
+            case 0,
+                ProcessingIndex += CInc
+                break
+            case 1,
+                IsProcessing = 0
+                CurrentSubprocess = table()
+                
+                if(getAndStartSubprocess()) { break } else { return }
+            case 2,
+                ProcessingIndex += CInc
+                return
+        }
+        continue
+    }
+}
+
+function updateSubprocesses() {
+    if(IsProcessing) {
+       doCurrentSubprocess() 
+    } else {
+        if(getAndStartSubprocess()) {
+            doCurrentSubprocess()
+        }    
+    }
+}

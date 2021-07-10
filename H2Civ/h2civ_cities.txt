@@ -1,0 +1,228 @@
+@name H2Civ Cities
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+function number table:getProductionYield(Tile:string, TileYields:table, Feature:string, FeatureYields:table, Structure:string, StructureYields:table, CityYieldMods:table, FactionYieldMods:table) {
+    local Client = This["ClientIndex",number]
+    
+    local TileYield = TileYields["Production",number] + (CityYieldMods[Tile+"ProdYield",number]) + (FactionYieldMods[Tile+"ProdYield",number])
+    
+    local FeatureYield = FeatureYields["Production",number] + (CityYieldMods[Feature+"ProdYield",number]) + (FactionYieldMods[Feature+"ProdYield",number])
+    
+    local StructureYield = StructureYields["Production",number] + (CityYieldMods[Structure+"ProdYield",number]) + (FactionYieldMods[Structure+"ProdYield",number])
+    
+    return TileYield + FeatureYield + StructureYield
+}
+
+function number table:getFoodYield(Tile:string, TileYields:table, Feature:string, FeatureYields:table, Structure:string, StructureYields:table, CityYieldMods:table, FactionYieldMods:table) {
+    local Client = This["ClientIndex",number]
+    
+    local TileYield = TileYields["Food",number] + (CityYieldMods[Tile+"FoodYield",number]) + (FactionYieldMods[Tile+"FoodYield",number])
+    
+    local FeatureYield = FeatureYields["Food",number] + (CityYieldMods[Feature+"FoodYield",number]) + (FactionYieldMods[Feature+"FoodYield",number])
+    
+    local StructureYield = StructureYields["Food",number] + (CityYieldMods[Structure+"FoodYield",number]) + (FactionYieldMods[Structure+"FoodYield",number])
+    
+    return TileYield + FeatureYield + StructureYield
+}
+
+function number table:getScrapYield(Tile:string, TileYields:table, Feature:string, FeatureYields:table, Structure:string, StructureYields:table, CityYieldMods:table, FactionYieldMods:table) {
+    local Client = This["ClientIndex",number]
+    
+    local TileYield = TileYields["Scrap",number] + (CityYieldMods[Tile+"ScrapYield",number]) + (FactionYieldMods[Tile+"ScrapYield",number])
+
+    local FeatureYield = FeatureYields["Scrap",number] + (CityYieldMods[Feature+"ScrapYield",number]) + (FactionYieldMods[Feature+"ScrapYield",number])
+
+    local StructureYield = StructureYields["Scrap",number] + (CityYieldMods[Structure+"ScrapYield",number]) + (FactionYieldMods[Structure+"ScrapYield",number])
+    
+    return TileYield + FeatureYield + StructureYield
+}
+
+function table table:getCellYields(Cell:vector2) {
+    local CellIndex = cellCoordsToIndex(Cell)
+    
+    local Tile = Tiles[CellIndex, table]["Name",string]
+    local Feature = Features[CellIndex, table]["Name",string]
+    local Structure = Structures[CellIndex, table]["Name",string]
+    
+    local TileBaseYields = GlobalYields[Tile,table]
+    local FeatureBaseYields = GlobalYields[Tile,table]
+    local StructureBaseYields = GlobalYields[Tile,table]
+    
+    local CityYieldMods = This["Modifiers",table]["CityYieldModifiers",table]
+    local FactionYieldMods = Shared["Client"+This["ClientIndex",number], table]["Modifiers",table]["YieldModifiers",table]
+    
+    local Yields = table()
+    
+    Yields["Production", number] = This:getProductionYield(Tile, TileBaseYields, Feature, FeatureBaseYields, Structure, StructureBaseYields, CityYieldMods, FactionYieldMods)
+    Yields["Food", number] = This:getFoodYield(Tile, TileBaseYields, Feature, FeatureBaseYields, Structure, StructureBaseYields, CityYieldMods, FactionYieldMods)
+    Yields["Scrap", number] = This:getScrapYield(Tile, TileBaseYields, Feature, FeatureBaseYields, Structure, StructureBaseYields, CityYieldMods, FactionYieldMods)
+    
+    return Yields
+}
+
+function updateCityYields(City:table) {
+    local Cells = getCellsInRange(City:getPos(), 1)
+    
+    local Yields = table("Food"=City:getModifier("CityFoodYield"), "Evolution"=(City["Population",number]*City:getModifier("PopEvoYield"))+(City:getModifier("CityEvoYield")-1), "Scrap"=City:getModifier("CityScrapYield"),
+                         "Production"=City:getModifier("CityProdYield") + City["Population",number]*City:getModifier("PopProdYield")*City["ClientIndex",number]:getModifier("PopProdYield"))
+    
+    ## Change to tile count instead of hardcoded 7
+    local CityYieldEfficiency = min((City["Population",number]) / 12, 1.5)
+    
+    for(I=1,Cells:count()) {
+        local Cell = Cells[I, vector2]
+        local TileYields = City:getCellYields(Cell)
+        
+        Yields["Food", number] = Yields["Food", number] + TileYields["Food", number] * CityYieldEfficiency
+        Yields["Scrap", number] = Yields["Scrap", number] + TileYields["Scrap", number] * CityYieldEfficiency
+        Yields["Production", number] = Yields["Production", number] + TileYields["Production", number] * CityYieldEfficiency
+    }
+    
+    Yields["Food", number] = ceil(Yields["Food", number])
+    Yields["Scrap", number] = ceil(Yields["Scrap", number])
+    # production yields are less effective based on how much population
+    Yields["Production", number] = ceil( min(Yields["Production", number], City["Population", number] * 2) )
+    
+    City["Yields", table] = Yields
+}
+
+function number table:getGrowthCost() {
+    return ceil((15 + ((This["Population", number]-1)^1.8)*2.8) * This:getModifier("GrowthCost"))
+}
+
+function produceProduct(City:table, Product:table) {
+    local Type = Product["Type",string]
+    local Client = Shared["Client"+City["ClientIndex",number], table]
+    
+    local NewUnit = table()
+    
+    switch(Type) {
+        case "Unit",
+            City["ProductionSum", number] = City["ProductionSum", number] - City:getProductionCost(City["Producing",string])
+            
+            NewUnit = attemptSpawnInRange(City["Producing",string], City["ClientIndex",number], City:getPos(), 1)
+            
+            if(NewUnit["IsCombat",number]) {
+                NewUnit["Strength",number] = (NewUnit["Strength",number] + (City:getModifier("NewCombatStrength")-1)) * City:getModifier("NewCombatStrengthMult")
+            }
+            
+            if(NewUnit["Name",string] == "Builder") {
+                NewUnit["Charges",number] = NewUnit["Charges",number] + (City["ClientIndex",number]:getModifier("AdditionalBuilderCharges")-1)
+            }
+            
+            if(City["Producing",string]:find("Settler")) {
+                Client["SettlersBuilt", number] = Client["SettlersBuilt", number] + 1
+            }
+            
+            # continue producing if enough scrap
+            
+            if(Product["ScrapCost", number] > Client["Scrap",number]) {
+                City["Producing",string] = ""
+                "promptCitiesChanged"()
+            } else {
+                Client["Scrap",number] = Client["Scrap",number] - City:getScrapCost(City["Producing",string])
+            }
+            
+            City["ClientIndex",number]:finishedProductionNotification(City, Product)
+        break
+        
+        case "Building",
+            City["ProductionSum", number] = City["ProductionSum", number] - City:getProductionCost(City["Producing",string])
+            
+            City["Built",table][City["Producing",string], number] = 1
+            
+            if(Product["Unique",number]) {
+                "setUniqueBuilt"(City["ClientIndex",number], City["Producing",string], 1)
+            }
+            
+            Product["BuildFunction",string](City["ClientIndex",number], City)
+            
+            City["Producing",string] = ""
+            "promptCitiesChanged"()
+            
+            City["ClientIndex",number]:finishedProductionNotification(City, Product)
+        break
+        
+        case "AcquireScrap",
+            City["ProductionSum", number] = 0
+            
+            Client["Scrap", number] = ceil(Client["Scrap",number] + City["Yields",table]["Production", number]/2)
+            
+        break
+    }
+}
+
+function updateCityTurn(City:table) {
+    City["Health",number] = City["Health",number] + min(10, 100-City["Health",number])
+    
+    City["FoodSum", number] = City["FoodSum", number] + City["Yields",table]["Food",number]
+    City["FoodSum", number] = max(City["FoodSum", number] - City["Population",number]*2,0)
+    
+    if(City["FoodSum", number] >= City:getGrowthCost()) {
+        City["FoodSum", number] = City["FoodSum", number] - City:getGrowthCost()
+        
+        City["Population", number] = City["Population", number] + 1
+    }
+    
+    City["ProductionSum", number] = City["ProductionSum", number] + City["Yields",table]["Production",number]
+    if(City["Producing",string] != "") {
+        local Product = Productions[City["Producing",string], table]
+        if(City["ProductionSum", number] >= City:getProductionCost(City["Producing",string])) {
+            produceProduct(City, Product)
+            
+            City["ParentEnt",entity]:soundPlay(1,2,"ui/item_bag_drop.wav")
+            soundVolume(1,0.5)
+            soundPitch(1, random(95,105))
+        }
+    }
+    
+    updateCityYields(City)
+}
+
+#
+
+function number:setUniqueBuilt(ProductKey:string, IsBuilt) {
+    local Cities = Shared["Client"+This, table]["Cities",array]
+    
+    for(I=1,Cities:count()) {
+        local City = Structures[cellCoordsToIndex(Cities[I,vector2]),table]
+        City["Built",table][ProductKey, number] = IsBuilt
+    }
+    
+    Shared["Client"+This, table]["UniquesBuilt", table][ProductKey,number] = IsBuilt
+}
+
+#
+
+function table:addCityProduction(ProductKey:string) {
+    This["Productions",array]:pushString(ProductKey)
+}
+
+function number:addProduction(ProductKey:string) {
+    local Client = Shared["Client"+This,table]
+    
+    Client["BaseProductions",array]:pushString(ProductKey)
+    
+    local Cities = Client["Cities",array]
+    
+    for(I=1,Cities:count()) {
+        local City = Structures[cellCoordsToIndex(Cities[I,vector2]),table]
+        City:addCityProduction(ProductKey)
+    }
+}
+
+function table:regenCityProductions() {
+    local Client = Shared["Client"+This["ClientIndex",number],table]
+    
+    
+    This["Productions",array] = array():add(Client["BaseProductions",array])
+    
+    #[for(I=This["Productions",array]:count(),1,-1) {
+        if(This["Built",table][This["Productions",array][I,string], number]) {
+            This["Productions",array]:remove(I)
+        }
+    }]#
+}

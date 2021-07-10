@@ -1,0 +1,43 @@
+@name H2n9_Events_V2
+@persist Events:table
+@trigger 
+
+### H2n9 Events V2 ###
+# Dependent on H2n9_Subprocess V2
+#
+#
+##
+
+function number eventExists(EventType:string) {
+    return Events:exists(EventType)
+}
+
+function listen(EventType:string, TriggerFunc:string) {
+    if(!eventExists(EventType)) {
+        Events[EventType,array] = array()
+    }
+    
+    Events[EventType,array]:pushString(TriggerFunc)
+}
+
+function trigger(EventType:string, Params:table) {
+    if(!eventExists(EventType)) {
+        Events[EventType,array] = array()
+    }
+    
+    addSubprocess("executeEvent", table("Type"=EventType, "Params"=Params))
+}
+
+#
+
+function number executeEvent(Index, Params:table) {
+    local Functions = Events[Params["Type",string], array]
+    
+    if(Index > Functions:count()) {
+        return 1   
+    }
+    
+    Functions[Index, string](Params["Params",table])
+    
+    return 0
+}

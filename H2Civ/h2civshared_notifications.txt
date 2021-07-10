@@ -1,0 +1,69 @@
+@name H2CivShared Notifications
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+function number:clearNotifications() {
+    Shared["Client"+This, table]["Notifications",table]:clear()
+    trigger("NotificationUpdate", table("Client"=This))
+}
+
+#
+
+function number:pushNotification(Params:table) {
+    Shared["Client"+This, table]["Notifications",table]:unshiftTable(Params)
+    trigger("NotificationUpdate", table("Client"=This))
+}
+
+#
+
+function table number:getCurrentNotification() {
+    return Shared["Client"+This, table]["Notifications",table][1,table]
+}
+
+function number:popNotification() {
+    Shared["Client"+This, table]["Notifications",table]:shift()
+    trigger("NotificationUpdate", table("Client"=This))
+}
+
+#
+
+function number:finishedProductionNotification(City:table, Product:table) {
+    This:pushNotification(table("Type"="FinishedProduction", "Desc"="City has finished producing " + Product["DisplayName",string] + ".", "Pos"=City:getPos()))
+}
+
+#
+
+function number:unitLostNotification(Unit:table) {
+    This:pushNotification(table("Type"="UnitLost", "Desc"=Unit["Name",string] + " was defeated in battle.", "Pos"=Unit:getPos()))
+}
+
+#
+
+function number:cityCapturedNotification(City:table) {
+    This:pushNotification(table("Type"="CityCaptured", "Desc"="Your captured an enemy city.", "Pos"=City:getPos()))
+}
+
+
+function number:cityLostNotification(City:table) {
+    This:pushNotification(table("Type"="CityLost", "Desc"="Your city was captured by an enemy.", "Pos"=City:getPos()))
+}
+
+#
+
+function number:alienScrapNotification(Scrap) {
+    This:pushNotification(table("Type"="AlienScrap", "Desc"="Defeated alien unit provided "+Scrap +" Scrap."))
+}
+
+function number:alienNestNotification(Scrap) {
+    This:pushNotification(table("Type"="AlienNest", "Desc"="Destroyed alien nest provided "+Scrap +" Scrap."))
+}
+
+
+
+#
+
+function number:collectedRefugeesNotification(Yield:string) {
+    This:pushNotification(table("Type"="CollectRefugees", "Desc"="Refugees provided " + Yield + "."))
+}

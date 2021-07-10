@@ -1,0 +1,82 @@
+@name H2Civ Evolutions
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+function addEvolution(ClientIndex, Type:string) {
+    local Client = Shared["Client"+ClientIndex, table]
+    
+    local Evo = Evolutions[Client["Faction",string],table][Type,table]
+    
+    Client["Evolved",table][Type,number] = 1
+    
+    Evo["ExecuteFunction",string](ClientIndex)
+}
+
+# combine
+
+function number:establishmentEvo() {
+    This:multModifier("SettlerScrapCost", 0.6)
+}
+
+function number:expansionEvo() {
+    local Spawnpoint = Shared["Client"+This, table]["Cities",array][1,vector2]
+    
+    attemptSpawnInRange("Combine_Settler", This, Spawnpoint, 1)
+    attemptSpawnInRange("Combine_Builder", This, Spawnpoint, 1)
+}
+
+function number:enslavementEvo() {
+    This:setModifier("RefugeesGrantBuilders", 2)
+    This:addModifier("AdditionalBuilderCharges", 1)
+}
+
+function number:superiorEngEvo() {
+    This:addModifier("PopProdYield", 1)
+}
+
+function number:governanceEvo() {
+    This:addProduction("LocalGovernment")
+}
+
+function number:subjugateEvo() {
+    This:addProduction("Citadel")
+}
+
+# rebel
+
+function number:otherworldersEvo() {
+    This:setModifier("AliensProvideScrap", 2)
+}
+
+function number:rebelMomentumEvo() {
+    This:addModifier("NewCityPop", 1)
+    
+    local Spawnpoint = Shared["Client"+This, table]["Cities",array][1,vector2]
+    attemptSpawnInRange("Rebel_Settler", This, Spawnpoint, 1)
+}
+
+
+function number:outnumberedEvo() {
+    This:setModifier("NegateEnemyAdjacency", 0)
+}
+
+function number:pocketCommunitiesEvo() {
+    This:addYieldModifier("FarmProdYield", 1)
+}
+
+function number:exterminationEvo() {
+    This:addModifier("CanClearNest", 2)
+}
+
+function number:scavengerSquadsEvo() {
+    This:addYieldModifier("DesertScrapYield", 1)
+    This:addYieldModifier("SnowScrapYield", 1)
+    This:addModifier("RuinsScrapYield", 1)
+}
+
+function number:renewedAgricultureEvo() {
+    This:addYieldModifier("FarmFoodYield", 1)
+    # farms on wasteland tiles
+}

@@ -1,0 +1,191 @@
+@name H2CivShared Factions
+@inputs 
+@outputs 
+@persist Factions:table Productions:table UniqueProductions:table PRODUCTION_TYPE_COlORS:table CITADEL_CHARGES_REQUIRED
+@trigger 
+
+Factions = table()
+
+CITADEL_CHARGES_REQUIRED = 10
+
+Factions["Combine", table] = table( "Name"="Combine",
+                                    "Description"="Combine\n\nUnique Traits :\n   - auniquetrait\n\nWin Conditions :\n   - Domination",
+                                    "Units"=array("Combine_Settler", "Combine_Builder", "Combine_MilitaryEngineer", "Combine_Scouts", "Combine_Soldiers"),
+                                   "Buildings"=array("Radio", "Combine_TrainingYard", "FoodMarket", "Factory"))
+
+Factions["Rebel", table] = table( "Name"="Rebels",
+                                "Description"="Rebels\n\nUnique Traits :\n   - auniquetrait\n\nWin Conditions :\n   - Domination",
+                                "Units"=array("Rebel_Settler", "Rebel_Builder", "Rebel_MilitaryEngineer", "Rebel_Scouts", "Rebel_Soldiers"),
+                                 "Buildings"=array("Radio", "Rebel_TrainingYard", "FoodMarket", "Workshop"))
+  
+Factions["Undead", table] = table( "Name"="Undead",
+                                "Description"="Undead\n\nUnique Traits :\n   - auniquetrait\n\nWin Conditions :\n   - Domination",
+                                "Units"=array(),
+                                 "Buildings"=array())
+    
+Factions["MannCo", table] = table( "Name"="Mann Co.",
+                                "Description"="Mann Co.\n\nUnique Traits :\n   - auniquetrait\n\nWin Conditions :\n   - Domination",
+                                "Units"=array(),
+                                 "Buildings"=array())
+    
+# Robots
+Factions["GrayGravelCo", table] = table( "Name"="Gray Gravel Co.",
+                                "Description"="Gray Gravel Co.\n\nUnique Traits :\n   - auniquetrait\n\nWin Conditions :\n   - Domination",
+                                "Units"=array(),
+                                 "Buildings"=array())
+    
+ 
+
+Factions["Combine", table]["Productions",array]=array("AcquireScrap"):add(Factions["Combine", table]["Units",array]):add(Factions["Combine", table]["Buildings",array])                          
+Factions["Rebel", table]["Productions",array]=array("AcquireScrap"):add(Factions["Rebel", table]["Units",array]):add(Factions["Rebel", table]["Buildings",array])
+Factions["Undead", table]["Productions",array]=array():add(Factions["Undead", table]["Units",array]):add(Factions["Undead", table]["Buildings",array])
+
+#
+
+PRODUCTION_TYPE_COlORS = table("Building"=vec(100,0,150), "Unit"=vec(60,0,170), "AcquireScrap"=vec(40,110,170))
+
+# combine
+Productions["Combine_Settler",table] = table( "DisplayName"="Settler", "ProductionCost"=25, "ScrapCost"=40, "Type"="Unit")
+Productions["Combine_Builder",table] = table( "DisplayName"="Builder", "ProductionCost"=15, "ScrapCost"=15, "Type"="Unit")
+Productions["Combine_MilitaryEngineer",table] = table( "DisplayName"="Military Engineer", "ProductionCost"=18, "ScrapCost"=25, "Type"="Unit")
+Productions["Combine_Scouts",table] = table( "DisplayName"="Combine Scouts", "ProductionCost"=12, "ScrapCost"=0, "Type"="Unit")
+Productions["Combine_Soldiers",table] = table( "DisplayName"="Combine Soldiers", "ProductionCost"=35, "ScrapCost"=30, "Type"="Unit")
+Productions["Combine_Strider",table] = table( "DisplayName"="Combine Strider", "ProductionCost"=42, "ScrapCost"=75, "Type"="Unit")
+Productions["Combine_Helicopter",table] = table( "DisplayName"="Combine Helicopter", "ProductionCost"=50, "ScrapCost"=65, "Type"="Unit")
+
+# rebel
+Productions["Rebel_Settler",table] = table( "DisplayName"="Settler", "ProductionCost"=25, "ScrapCost"=40, "Type"="Unit")
+Productions["Rebel_Builder",table] = table( "DisplayName"="Builder", "ProductionCost"=15, "ScrapCost"=15, "Type"="Unit")
+Productions["Rebel_MilitaryEngineer",table] = table( "DisplayName"="Military Engineer", "ProductionCost"=18, "ScrapCost"=25, "Type"="Unit")
+Productions["Rebel_Scouts",table] = table( "DisplayName"="Rebel Scouts", "ProductionCost"=12, "ScrapCost"=0, "Type"="Unit")
+Productions["Rebel_Soldiers",table] = table( "DisplayName"="Rebel Soldiers", "ProductionCost"=34, "ScrapCost"=30, "Type"="Unit")
+Productions["Rebel_Shocktroopers",table] = table( "DisplayName"="Rebel Shocktroopers", "ProductionCost"=36, "ScrapCost"=40, "Type"="Unit")
+
+Productions["Rebel_JeepSquad",table] = table( "DisplayName"="Rebel Jeep Squad", "ProductionCost"=40, "ScrapCost"=55, "Type"="Unit")
+Productions["Rebel_AirboatSquad",table] = table( "DisplayName"="Rebel Airboat Squad", "ProductionCost"=44, "ScrapCost"=75, "Type"="Unit")
+
+# shared
+
+Productions["Radio",table] = table( "DisplayName"="Radio Tower", "ProductionCost"=22, "ScrapCost"=15, "Type"="Building", "BuildFunction"="buildEmergencyRadio",
+                                    "Description"="25% faster growth.\n+1 Evo")
+
+Productions["FoodMarket",table] = table( "DisplayName"="Food Market", "ProductionCost"=40, "ScrapCost"=20, "Type"="Building", "BuildFunction"="buildFoodMarket",
+                                    "Description"="+2 Food\n-1 Scrap")
+
+Productions["ResearchLab",table] = table( "DisplayName"="Research Lab", "ProductionCost"=85, "ScrapCost"=80, "Type"="Building", "BuildFunction"="buildResearchLab",
+                                    "Description"="+1 Evo from every citizen.\n-2 Scrap")
+
+
+# combine
+
+Productions["Combine_TrainingYard",table] = table( "DisplayName"="Training Yard", "ProductionCost"=34, "ScrapCost"=35, "Type"="Building", "BuildFunction"="buildCombineTrainingYard",
+                                    "Description"="New combat units have +8 Strength.\nCombat units cost 15% more production.\nUnlocks Combine Elites")
+
+Productions["Combine_MilitaryAcademy",table] = table( "DisplayName"="Military Academy", "ProductionCost"=75, "ScrapCost"=110, "Type"="Building", "BuildFunction"="buildCombineMilitaryAcademy",
+                                    "Description"="New combat units have +15% Strength.\nCombat units cost 25% more production.\n-3 Scrap")
+
+
+Productions["Factory",table] = table( "DisplayName"="Factory", "ProductionCost"=95, "ScrapCost"=80, "Type"="Building", "BuildFunction"="buildFactory",
+                                    "Description"="+1 Production from every citizen\n-3 Scrap\n-1 Evo")
+
+Productions["LocalGovernment",table] = table( "DisplayName"="Local Government", "ProductionCost"=46, "ScrapCost"=25, "Type"="Building", "BuildFunction"="buildLocalGovernment",
+                                    "Description"="+1 Evo from every citizen\n-2 Scrap")
+
+Productions["Citadel",table] = table( "DisplayName"="Citadel", "ProductionCost"=150, "ScrapCost"=300, "Type"="Building", "Unique"=1, "BuildFunction"="buildCitadel",
+                                    "Description"="Starts the process of a Citadel Victory\nUse 10 military engineers on this city to finish the Citadel\nThis city can no longer make new products.")
+
+
+#
+
+# rebel
+
+Productions["Rebel_TrainingYard",table] = table( "DisplayName"="Training Yard", "ProductionCost"=34, "ScrapCost"=35, "Type"="Building", "BuildFunction"="buildRebelTrainingYard",
+                                    "Description"="New combat units have +8 Strength.\nCombat units cost 15% more production.\nUnlocks Rebel Shocktroopers")
+
+Productions["Rebel_MilitaryAcademy",table] = table( "DisplayName"="Military Academy", "ProductionCost"=75, "ScrapCost"=110, "Type"="Building", "BuildFunction"="buildRebelMilitaryAcademy",
+                                    "Description"="New combat units have +15% Strength.\nCombat units cost 25% more production.\n-3 Scrap")
+
+Productions["Workshop",table] = table( "DisplayName"="Workshop", "ProductionCost"=90, "ScrapCost"=70, "Type"="Building", "BuildFunction"="buildWorkshop",
+                                    "Description"="+1 Production from forest or resource tiles\n+1 Production\n-2 Scrap")
+
+#
+
+##
+
+Productions["AcquireScrap",table] = table( "DisplayName"="Acquire Scrap", "ProductionCost"=1, "ScrapCost"=0, "Type"="AcquireScrap",
+                                            "Description"="Convert 50% production into scrap.")
+
+##
+
+# lookup table for checking if a production is unique
+UniqueProductions = table( "Citadel"=1 )
+
+##
+
+
+# city:
+function number table:getProductionCost(ProductKey:string) {
+    local Product = Productions[ProductKey,table]
+    
+    local Cost = Product["ProductionCost",number]
+    
+    if(Product["Type",string] == "Unit") {
+        if(UnitTypes[ProductKey,table]["IsCombat",number]) {
+            Cost *= This:getModifier("CombatUnitProdCost")
+        }
+    }
+    
+    if(ProductKey:find("Settler")) {
+        local Client = Shared["Client"+This["ClientIndex",number], table]
+        Cost *= 1 + ((Client["SettlersBuilt", number]^2) / 5)
+    }
+    
+    return Cost
+}
+
+function number table:getScrapCost(ProductKey:string) {
+    local Product = Productions[ProductKey,table]
+    
+    local Cost = Product["ScrapCost",number]
+    
+    if(Product["Type",string] == "Unit") {
+        if(ProductKey:find("Settler")) {
+            Cost *= Shared["Client"+This["ClientIndex",number], table]:getModifier("SettlerScrapCost")
+        }
+    }
+    
+    return Cost
+}
+
+
+#
+
+function array table:getFactionUnits() {
+    return Factions[This["Faction",string], table]["Units",array]
+}
+
+function array table:getFactionProductions() {
+    return Factions[This["Faction",string], table]["Productions",array]
+}
+
+#
+
+function array table:getCityProductions() {
+    local Client = Shared["Client"+This["ClientIndex",number], table]
+    
+    local Prods = This["Productions",array] #Client:getFactionProductions() 
+
+    local Available = array()
+
+    for(I=1,Prods:count()) {
+        local Key = Prods[I,string]
+        
+        if(This["Built",table][Prods[I,string],number]) {
+            continue
+        }
+        
+        Available:pushString(Key)
+    }
+
+    return Available
+}

@@ -1,0 +1,775 @@
+@name H2CivClient EGP
+@inputs EGP:wirelink
+@outputs 
+@persist SelectedCity SelectedEvo:string Anim
+@trigger 
+@autoupdate
+
+listen("SetupClient", "updateEGPPosition")
+listen("SetupClient", "initialiseEGP")
+listen("SetPlayer", "updatePlayerSet")
+listen("MapLoaded", "onMapLoaded")
+
+listen("UpdateState-WaitForPlayer", "waitForPlayerUse")
+
+listen("UpdateState-WaitForReady", "waitForReadyUpdate")
+listen("EnterState-Game", "enterGameUI")
+
+listen("NewTurn", "updateTurnLabel")
+listen("NewTurn", "updateCityEntryList")
+
+listen("NewPlayerCity", "updateCityEntryList")
+listen("NewPlayerCity", "updateTurnLabel")
+
+listen("CitiesChanged", "updateCityEntryList")
+
+listen("ResourcesChanged", "updateTurnLabel")
+listen("ResourcesChanged", "updateCityEntryList")
+
+listen("UpdateState-Game", "inGameEGPUpdate")
+
+function updateEGPPosition(Params:table) {
+    # Set EGP Pos
+    local Base = Shared["MapBase",entity]
+    
+    local Pos = Base:pos() + Base:forward() * 894
+    local Ang = ang(180,270,90)
+    if(ClientIndex == 2) {
+        Pos = Base:pos() - Base:forward() * 894
+        Ang = ang(180,90,90)
+    }
+    if (ClientIndex == 3) {
+        Pos = Base:pos() + Base:right() * 894
+        Ang = ang(180,180,90)
+    }
+    if (ClientIndex == 4) {
+        Pos = Base:pos() - Base:right() * 894
+        Ang = ang(180,0,90)
+    }
+    
+    EGP:entity():setPos(Pos)
+    EGP:entity():setAng(Base:toWorld(Ang))
+    
+    ##
+    
+    # EndTurn Indicator
+    holoCreate(3, Pos + EGP:entity():up()*100 + vec(0,0,400), vec(8,1,8), EGP:entity():angles()+ang(0,0,90))
+    holoModel(3, "models/sprops/misc/alphanum/alphanum_arrow_b.mdl")
+    holoMaterial(3, "models/debug/debugwhite")
+    holoColor(3, vec(50,170,50),0)
+    
+    ##
+    
+}
+
+function string wirelink:egpEvolution(Pos:vector2, Size:vector2) {
+    local Circle = This:egpAdvCircle(Pos, Size, table("Color"=vec(141, 66, 245)*0.75))
+    local Inner = This:egpAdvCircle(Pos, Size*0.9, table("Color"=vec(141, 66, 245)*0.7, "Parent"=Circle))
+    local Inner3 = This:egpAdvCircle(Pos, Size*0.7, table("Color"=vec(141, 66, 245)*0.8, "Parent"=Circle, "Alpha"=255))
+
+    return This:assignChildren(Circle, array(Inner, Inner3))
+}
+
+function string wirelink:egpScrap(Pos:vector2, Size:vector2) {
+    local Circle = This:egpAdvCircle(Pos, Size, table("Color"=vec(184, 141, 105)*0.75))
+    local Inner = This:egpAdvCircle(Pos, Size*0.9, table("Color"=vec(184, 141, 105)*0.7, "Parent"=Circle))
+    local Inner3 = This:egpAdvCircle(Pos, Size*0.7, table("Color"=vec(184, 141, 105)*0.8, "Parent"=Circle, "Alpha"=255))
+
+    return This:assignChildren(Circle, array(Inner, Inner3))
+}
+
+function string wirelink:egpFood(Pos:vector2, Size:vector2) {
+    local Circle = This:egpAdvCircle(Pos, Size, table("Color"=vec(0, 180, 35)*0.75))
+    local Inner = This:egpAdvCircle(Pos, Size*0.9, table("Color"=vec(0, 180, 35)*0.7, "Parent"=Circle))
+    local Inner3 = This:egpAdvCircle(Pos, Size*0.7, table("Color"=vec(0, 180, 35)*0.8, "Parent"=Circle, "Alpha"=255))
+
+    return This:assignChildren(Circle, array(Inner, Inner3))
+}
+
+function string wirelink:egpProduction(Pos:vector2, Size:vector2) {
+    local Circle = This:egpAdvCircle(Pos, Size, table("Color"=vec(190, 90, 45)*0.75))
+    local Inner = This:egpAdvCircle(Pos, Size*0.9, table("Color"=vec(190, 90, 45)*0.7, "Parent"=Circle))
+    local Inner3 = This:egpAdvCircle(Pos, Size*0.7, table("Color"=vec(190, 90, 45)*0.8, "Parent"=Circle, "Alpha"=255))
+    
+    return This:assignChildren(Circle, array(Inner, Inner3))
+}
+
+function string wirelink:egpCityEntry(Key:string, Pos:vector2, City:table, Index) {
+    local Background = This:egpAdvRoundedBox(Key+"_Box", Pos, vec2(44,8), table("Color"=PLAYER_COLORS[City["ClientIndex",number], vector]*0.6, "Alpha"=180, "Radius"=16))
+    local Name = This:egpAdvTextLayout(Key+"_Name", "City"+Index, Pos + vec2(6.75,-1.5), vec2(44,5), table("HAlign"=0, "VAlign"=1, "Font"="Trebuchet", "FontSize"=54, "Parent"=Background))
+        
+    local Population = This:egpAdvTextLayout(Key+"_Population", City["Population", number]:toString(), Pos + vec2(1,0), vec2(44,7), table("HAlign"=0, "VAlign"=1, "Font"="Trebuchet", "FontSize"=72, "Parent"=Background))
+        
+    local Production = This:egpAdvTextLayout(Key+"_Production", "Producing - None", Pos + vec2(7.5,1.75), vec2(44,5), table("HAlign"=0, "VAlign"=1, "Font"="Trebuchet", "FontSize"=30, "Parent"=Background))
+        
+    return This:assignChildren(Background, array(Name, Population, Production))
+}
+
+function string wirelink:cityEntryList(Key:string, Index, ShouldCreate) {
+    local Object = This:getList(Key)[Index,string]
+    
+    local City = Structures[ cellCoordsToIndex( Shared["Client"+ClientIndex,table]["Cities",array][Index, vector2] ) , table]
+    
+    if(ShouldCreate) {
+        Object = This:egpCityEntry(This:genKey(), vec2(-94, 11+(Index-1)*8.75), City, Index)
+    } else {
+        This:setFlag(This:getObjectChild(Object, 1), "Text", "City"+Index)
+        This:setFlag(This:getObjectChild(Object, 2), "Text", City["Population", number]:toString())
+
+        if(SelectedCity == Index) {
+            This:setFlag(Object, "Color", PLAYER_COLORS[City["ClientIndex",number], vector]*0.8)
+        } else {
+            This:setFlag(Object, "Color", PLAYER_COLORS[City["ClientIndex",number], vector]*0.6)
+        }
+        
+        if(City["Producing", string] != "") {
+            local Product = Productions[City["Producing",string], table]
+            local Turns = max(1,ceil((City:getProductionCost(City["Producing",string])-City["ProductionSum", number])/City["Yields", table]["Production",number]))
+            This:setFlag(This:getObjectChild(Object, 3), "Text", "Producing - "+Product["DisplayName",string]+" ("+Turns+" turns)")
+        } else {
+            This:setFlag(This:getObjectChild(Object, 3), "Text", "Producing - None")
+        }    
+    }
+        
+    return Object
+}
+
+
+function string wirelink:egpProductionEntry(Key:string, Pos:vector2, Product:table, ProductKey:string, City:table) {
+    local Background = This:egpAdvRoundedBox(Key+"_Box", Pos, vec2(40,7), table("Color"=PRODUCTION_TYPE_COlORS[Product["Type",string],vector], "Alpha"=160, "Radius"=16))
+    local Name = This:egpAdvTextLayout(Key+"_Name", Product["DisplayName",string], Pos, vec2(39,6.5), table("HAlign"=0, "VAlign"=0, "Font"="Trebuchet", "FontSize"=32, "Parent"=Background))
+        
+    local Turns = max(1,ceil((City:getProductionCost(ProductKey)-City["ProductionSum", number])/City["Yields", table]["Production",number]))
+        
+    local Production = This:egpAdvTextLayout(Key+"_Production", City:getScrapCost(ProductKey) + " Scrap\n("+Turns+" turns)", Pos, vec2(39,6), table("HAlign"=2, "VAlign"=1, "Font"="Trebuchet", "FontSize"=24, "Parent"=Background))
+        
+    local Description = This:egpAdvTextLayout(Key+"_Description", Product["Description",string], Pos + vec2(0,1.25), vec2(38,5.25), table("HAlign"=0, "VAlign"=0, "Font"="Trebuchet", "FontSize"=18, "Parent"=Background))
+        
+    return This:assignChildren(Background, array(Name, Production, Description))
+}
+
+function string wirelink:productionList(Key:string, Index, ShouldCreate) {
+    local Object = This:getList(Key)[Index,string]
+    
+    local City = Structures[ cellCoordsToIndex( Shared["Client"+ClientIndex,table]["Cities",array][SelectedCity, vector2] ) , table]
+    local CityProds = City:getCityProductions()
+    local ProductKey = CityProds[Index, string]
+    local Product = Productions[ProductKey, table]
+    
+    if(ShouldCreate) {
+        Object = This:egpProductionEntry(This:genKey(), vec2(-45, 16+(Index-1)*7.25), Product, ProductKey, City)
+    } else {
+        local Turns = max(1,ceil((City:getProductionCost(ProductKey)-City["ProductionSum", number])/City["Yields", table]["Production",number]))
+        This:setFlag(This:getObjectChild(Object, 2), "Text", City:getScrapCost(ProductKey) + " Scrap\n("+Turns+" turns)")
+    }
+        
+    return Object
+}
+
+function updateEGP() {
+    if(!Shared["Loaded",number]) {
+        EGP:setFlag("LoadingDesc", "Text", Shared["LoadingStage",string])
+        EGP:setFlag("LoadingIcon", "Angle", Anim*4)
+    }
+    
+    EGP:setFlag("MenuRotationParent", "Angle", Anim*4)
+    
+    Anim += 1
+}
+
+function onMapLoaded(Params:table) {
+    EGP:clearGroup("Loading")
+}
+
+function initialiseEGP(Params:table) {
+    registerEGP(EGP)
+    
+    EGP:defaultScaling()
+    
+    defineTheme("A", table("Color"=PLAYER_COLORS[ClientIndex, vector]))
+    defineTheme("B", table("Color"=PLAYER_COLORS[ClientIndex, vector]*0.8))
+    defineTheme("C", table("Color"=vec(80)))
+    defineTheme("D", table("Color"=vec(50)))
+    defineTheme("E", table("Color"=vec(255,130,0))) 
+    defineTheme("F", table("Color"=vec(255,130,0)*0.8)) 
+    
+    local W = 347
+    
+    EGP:egpAdvBox(vec2(16,2.5), vec2(W,5), table("Theme"="B"))
+    EGP:egpAdvTriangle(vec2(8+W/4,0), vec2(24+W/4,0), vec2(8+W/4, 5), table("Theme"="B"))
+    EGP:egpAdvTriangle(vec2(8+-W/4,0), vec2(-8-W/4,0), vec2(8+-W/4, 5), table("Theme"="B"))
+    
+    EGP:egpAdvTextLayout("PlayerLabel", "", vec2(16,2.5), vec2(90, 6), table("Font"="Trebuchet", "Color"=PLAYER_COLORS[ClientIndex, vector]*0.9, "FontSize"=70, "HAlign"=1, "VAlign"=1))
+    
+    # Logo
+   
+    EGP:startGroup("Menu")
+    
+    EGP:egpAdvBox(vec2(96, 44), vec2(160, 24), table("Theme"="D", "Material"="gui/gradient"))
+    EGP:egpAdvBox(vec2(-64, 44), vec2(160, 24), table("Theme"="D", "Material"="gui/gradient", "Angle"=180))
+    
+    local Glow = EGP:egpAdvBox("MenuLogoParent", vec2(16, 44), vec2(64,64), table("Theme"="E", "Material"="pp/morph/brush1", "Alpha"=25))
+    EGP:egpAdvCircle("MenuRotationParent", vec2(0, 0), vec2(24,24), table("Theme"="C", "Parent"=Glow))
+    
+    EGP:egpAdvWedge(vec2(0,0), vec2(24,24), table("Theme"="E", "SizeNum"=-45, "Parent"="MenuRotationParent"))
+    EGP:egpAdvWedge(vec2(0,0), vec2(24,24), table("Theme"="E", "SizeNum"=-45, "Angle"=180, "Parent"="MenuRotationParent"))
+    EGP:egpAdvWedge(vec2(0,0), vec2(24,24), table("Theme"="E", "SizeNum"=-45, "Angle"=90, "Parent"="MenuRotationParent"))
+    EGP:egpAdvWedge(vec2(0,0), vec2(24,24), table("Theme"="E", "SizeNum"=-45, "Angle"=270, "Parent"="MenuRotationParent"))
+    
+    EGP:egpAdvCircle(vec2(0, 0), vec2(22,22), table("Theme"="D", "Parent"=Glow))
+    
+    EGP:egpAdvTextLayout("CivHL", vec2(0.125, 0.125), vec2(44,44), table("FontSize"=180, "Font"="Trebuchet", "HAlign"=1, "VAlign"=1, "Color"=vec(80), "Parent"=Glow))
+    EGP:egpAdvTextLayout("CivHL", vec2(0, 0), vec2(44,44), table("FontSize"=180, "Font"="Trebuchet", "HAlign"=1, "VAlign"=1, "Theme"="E", "Parent"=Glow))
+
+    EGP:egpAdvTextLayout("By H2n9", vec2(0.0625, 1.0625), vec2(28,10), table("FontSize"=32, "Font"="Trebuchet", "HAlign"=2, "VAlign"=2, "Color"=vec(80), "Parent"=Glow))
+    EGP:egpAdvTextLayout("By H2n9", vec2(0, 1), vec2(28,10), table("FontSize"=32, "Font"="Trebuchet", "HAlign"=2, "VAlign"=2, "Theme"="E", "Parent"=Glow))
+    
+    EGP:egpAdvTextLayout("Temporary ass name.", vec2(0, 4), vec2(32,10), table("FontSize"=20, "Font"="Trebuchet", "HAlign"=1, "VAlign"=2, "Theme"="E", "Parent"=Glow))
+    
+    EGP:endGroup("Menu")
+    
+    EGP:startGroup("Loading")
+    local LoadingParent = EGP:egpAdvRoundedBox("LoadingParent", vec2(16, 66), vec2(50, 12), table("Theme"="D", "Radius"=24, "Alpha"=0))
+    EGP:egpAdvTextLayout("LoadingText", "Loading...", vec2(0, 0), vec2(46,10), table("FontSize"=70, "Font"="Trebuchet", "HAlign"=0, "VAlign"=0, "Theme"="F", "Alpha"=0,  "Parent"=LoadingParent))
+    EGP:egpAdvBox("LoadingIcon", vec2(-20, 2.5), vec2(4, 4), table("Theme"="F", "Alpha"=0, "Parent"=LoadingParent))
+    EGP:egpAdvTextLayout("LoadingDesc","generateRandomMapRelatedThing", vec2(4, 0), vec2(40,7), table("FontSize"=36, "Font"="Trebuchet", "HAlign"=0, "VAlign"=2, "Theme"="F", "Alpha"=0, "Parent"=LoadingParent))
+    EGP:endGroup("Loading")
+    #[
+    "vgui/gradient-d",
+    "vgui/gradient-r",
+    "vgui/gradient-u",
+    "vgui/gradient_down",
+    "vgui/gradient_up",
+    ]#
+    
+    #"initialiseEGP3"()
+    
+    addDelayedProcess("startReadyAnim", 2)
+}
+
+function startReadyAnim() {
+    EGP:egpAdvTextLayout("JoinLabel", "Press E to Join!", vec2(16,44), vec2(128, 24), table("Theme"="F", "Alpha"=0, "Font"="Trebuchet", "FontSize"=120, "HAlign"=1, "VAlign"=1, "Group"="JoinDialogA"))
+    
+    EGP:translate("MenuLogoParent", vec2(-84, 0), 4, "inQuart")
+    EGP:alphaTo("JoinLabel", 255, 3, "sine")
+    
+    EGP:alphaTo("LoadingParent", 255, 2, "sine")
+    EGP:alphaTo("LoadingText", 255, 3, "sine")
+    EGP:alphaTo("LoadingIcon", 255, 3, "sine")
+    EGP:alphaTo("LoadingDesc", 255, 3, "sine")
+}
+
+function showConfigureEGPWarning() {
+    EGP:alphaTo("JoinLabel", 0, 1, "rsine")
+    
+    EGP:egpAdvTextLayout("ConfigureTitle", "Configure EGP", vec2(16,44), vec2(100, 22.5), table("Theme"="F", "Alpha"=0, "Font"="Trebuchet", "FontSize"=120, "HAlign"=0, "VAlign"=0, "Group"="JoinDialogA"))
+    local Desc = "Please make sure to increase your emitter draw distance to view the entire UI.\n\nThis can be done either by :\n   - Setting convar 'wire_egp_emitter_drawdist 300'\n   - Set the slider in the Wire -> EGP V3 menu to 300"
+    EGP:egpAdvTextLayout("ConfigureDesc", Desc, vec2(19,47.25), vec2(100, 22), table("Theme"="F", "Alpha"=0, "Font"="Trebuchet", "FontSize"=46, "HAlign"=0, "VAlign"=1, "Group"="JoinDialogA"))
+    
+    EGP:alphaTo("ConfigureTitle", 255, 2, "sine")
+    EGP:alphaTo("ConfigureDesc", 255, 2, "sine")
+    
+    addDelayedProcess("hideConfigureEGPWarning", 7)
+}
+
+function hideConfigureEGPWarning() {
+    EGP:alphaTo("ConfigureTitle", 0, 1, "sine")
+    EGP:alphaTo("ConfigureDesc", 0, 1, "sine")
+    
+    addDelayedProcess("showFactionSelect", 1)
+}
+
+function showFactionSelect() {    
+    EGP:egpAdvBox("FactionBacking", vec2(20, 44), vec2(110, 24), table("Theme"="D", "Group"="Menu"))
+    
+    EGP:sizeTo("FactionBacking", vec2(110, 52), 3, "inQuart")
+    
+    Shared["Client"+ClientIndex, table]["LobbyStatus", string] = "Faction Select"
+    
+    addDelayedProcess("showFactionSelect2", 2)
+}
+
+function string wirelink:egpFactionSelectEntry(Key:string, Pos:vector2, Faction:table, FKey:string) {
+    local Background = This:egpAdvBox(Key+"_Box", Pos, vec2(22,6), table("Theme"="C", "Alpha"=0, "OnClick"="setFactionButtonEvent", "FactionKey"=FKey))
+    local Name = This:egpAdvTextLayout(Key+"_Name", Faction["Name",string], Pos, vec2(21,6), table("Theme"="F", "HAlign"=1, "VAlign"=1, "Font"="Trebuchet", "FontSize"=50, "Alpha"=0, "Parent"=Background))
+    
+    EGP:alphaTo(Name, 255, 1, "sine")
+    
+    return This:assignChildren(Background, array(Name))
+}
+
+function string wirelink:factionSelectList(Key:string, Index, ShouldCreate) {
+    local Object = This:getList(Key)[Index,string]
+    
+    local FKey = Factions:keys()[Index, string]
+    local Faction = Factions[FKey, table]
+
+    if(ShouldCreate) {
+        Object = This:egpFactionSelectEntry(This:genKey(), vec2(-22, 29+(Index-1)*6.5), Faction, FKey)
+        if(FKey == Shared["Client"+ClientIndex,table]["Faction",string]) {
+            EGP:setFlag(Object, "Alpha", 255)
+        }
+    } else {
+        if(FKey == Shared["Client"+ClientIndex,table]["Faction",string]) {
+            EGP:setFlag(Object, "Alpha", 255)
+        } else {
+            EGP:setFlag(Object, "Alpha", 0)
+        }
+    }
+        
+    return Object
+}
+
+function showFactionSelect2() {
+    
+    EGP:startGroup("FactionSelect")
+    
+    EGP:egpAdvTextLayout("FactionTitle", "Select Faction", vec2(20,44), vec2(106, 49), table("Theme"="F", "Alpha"=0, "Font"="Trebuchet", "FontSize"=80, "HAlign"=0, "VAlign"=0))
+    EGP:alphaTo("FactionTitle", 255, 1, "sine")
+    
+    local L = EGP:egpAdvLine(vec2(20,44), array(vec2(-30, -19), vec2(-30, 24)), table("Theme"="F", "Alpha"=0, "SizeNum"=4))
+    EGP:alphaTo(L, 255, 1, "sine")
+    
+    local L = EGP:egpAdvLine(vec2(0,44), array(vec2(20-53, -19), vec2(20+53, -19)), table("Theme"="F", "Alpha"=0, "SizeNum"=4))
+    EGP:alphaTo(L, 255, 1, "sine")
+    
+    EGP:egpAdvBoxOutline("FactionConfirmBacking", vec2(62, 65), vec2(22,6), table("Theme"="F", "OnClick"="confirmFactionButtonEvent", "SizeNum"=4, "Alpha"=0))
+    EGP:alphaTo("FactionConfirmBacking", 255, 1, "sine")  
+    EGP:egpAdvTextLayout("FactionConfirmText", "Confirm", vec2(62,65), vec2(22, 6), table("Theme"="F", "Alpha"=0, "Font"="Trebuchet", "FontSize"=64, "HAlign"=1, "VAlign"=1))
+    EGP:alphaTo("FactionConfirmText", 255, 1, "sine")  
+    
+    EGP:egpAdvTextLayout("FactionDescription", Factions["Rebel",table]["Description",string], vec2(44,47), vec2(106,42), table("Theme"="F", "Alpha"=0, "Font"="Trebuchet", "FontSize"=40, "HAlign"=0, "VAlign"=0))
+    EGP:alphaTo("FactionDescription", 255, 1, "sine")
+    
+    EGP:endGroup("FactionSelect")
+    
+    EGP:egpList("FactionSelectList", "factionSelectList", Factions:count())
+}
+
+function hideFactionSelect() {
+    EGP:egpUpdateList("FactionSelectList", "factionSelectList", 0)
+    
+    EGP:clearGroup("FactionSelect")
+}
+
+function string wirelink:egpParticipantEntry(Key:string, Pos:vector2, Client:table, I) {
+    local Background = This:egpAdvBoxOutline(Key+"_Box", Pos, vec2(80,6), table("Theme"="F", "SizeNum"=4, "Alpha"=0))
+    local Name = This:egpAdvTextLayout(Key+"_Name", Client["Player",entity]:name()+" ", Pos, vec2(78,6), table("Theme"="F", "HAlign"=0, "VAlign"=1, "Font"="Trebuchet", "FontSize"=54, "Alpha"=0, "Parent"=Background))
+    local Status = This:egpAdvTextLayout(Key+"_Status", Client["LobbyStatus",string], Pos, vec2(78,6), table("Theme"="F", "HAlign"=2, "VAlign"=1, "Font"="Trebuchet", "FontSize"=40, "Alpha"=0, "Parent"=Background))
+    local PlayerColor = This:egpAdvRoundedBox(Key+"_PlayerColor", Pos - vec2(43.5,0), vec2(5,5), table("Color"=PLAYER_COLORS[I,vector], "SizeNum"=4, "Alpha"=0, "Radius"=24))
+    
+    EGP:alphaTo(Background, 255, 1, "sine")
+    EGP:alphaTo(Name, 255, 1, "sine")
+    EGP:alphaTo(Status, 255, 1, "sine")
+    EGP:alphaTo(PlayerColor, 80, 1, "sine")
+    
+    return This:assignChildren(Background, array(Name, Status, PlayerColor))
+}
+
+function string wirelink:participantList(Key:string, Index, ShouldCreate) {
+    local Object = This:getList(Key)[Index,string]
+    
+    local Client = Shared["Client"+Index, table]
+
+    if(ShouldCreate) {
+        Object = This:egpParticipantEntry(This:genKey(), vec2(20, 29+(Index-1)*7), Client, Index)
+    } else {
+        This:setFlag(This:getObjectChild(Object, 1), "Text", Client["Player",entity]:name())
+        This:setFlag(This:getObjectChild(Object, 2), "Text", Client["LobbyStatus",string])
+    }
+        
+    return Object
+}
+
+function showReadyPage() {
+    EGP:egpAdvBoxOutline("FactionReadyBacking", vec2(20, 65), vec2(22,6), table("Theme"="F", "SizeNum"=4, "OnClick"="confirmReadyButtonEvent", "Group"="Menu"))
+    EGP:egpAdvTextLayout("FactionReadyText", "Ready", vec2(20,65), vec2(22, 6), table("Theme"="F", "Font"="Trebuchet", "FontSize"=64, "HAlign"=1, "VAlign"=1, "Group"="Menu"))
+    
+    Shared["Client"+ClientIndex, table]["LobbyStatus", string] = "Waiting"
+    
+    EGP:egpList("ParticipantList", "participantList", 4)
+}
+
+function initialiseEGP3() {
+    EGP:egpAdvTextLayout("TurnLabel", "Turn : 0", vec2(170,3), vec2(90, 6), table("Font"="Trebuchet", "FontSize"=48, "HAlign"=1, "VAlign"=1))
+    
+    # backing
+    EGP:egpAdvBox(vec2(16, 46), vec2(300, 82), table("Theme"="D"))
+    EGP:egpAdvTriangle(vec2(8+75,2.5), vec2(19.75+347/4,2.5), vec2(8+75, 44+40.5), table("Theme"="D"))
+    EGP:egpAdvTriangle(vec2(8+-75,2.5), vec2(-3.75-347/4,2.5), vec2(8+-75, 44+40.5), table("Theme"="D"))
+    
+    # stat bar
+    EGP:egpAdvRoundedBox(vec2(120, 3.5), vec2(70, 5), table("Theme"="D", "Radius"=8))
+    
+    EGP:egpEvolution(vec2(90,3), vec2(1.5,1.5))
+    EGP:egpAdvTextLayout("EvolutionDisplay","0 (+0)", vec2(100, 3), vec2(15,3), table("VAlign"=1, "Font"="Trebuchet", "FontSize"=40, "Color"=vec(141, 66, 245)*0.8))
+    
+    EGP:egpScrap(vec2(120,3), vec2(1.5,1.5))
+    EGP:egpAdvTextLayout("ScrapDisplay", "0 (+0)", vec2(130, 3), vec2(15,3), table("VAlign"=1, "Font"="Trebuchet", "FontSize"=40, "Color"=vec(184, 141, 105)*0.8))
+    
+    #
+    EGP:egpAdvBox(vec2(-45, 46), vec2(41, 82), table("Theme"="C"))
+    EGP:egpAdvRoundedBox(vec2(-45, 10), vec2(40, 3.25), table("Theme"="D", "Radius"=8))
+    
+    EGP:egpProduction(vec2(-62,10), vec2(1.25,1.25))
+    EGP:egpAdvTextLayout("CityProductionDisplay", "+0", vec2(-53, 10), vec2(15,3), table("VAlign"=1, "Font"="Trebuchet", "FontSize"=30, "Color"=vec(190, 90, 45)*0.8))
+    
+    EGP:egpFood(vec2(-52,10), vec2(1.25,1.25))
+    EGP:egpAdvTextLayout("CityFoodDisplay", "+0", vec2(-43, 10), vec2(15,3), table("VAlign"=1, "Font"="Trebuchet", "FontSize"=30, "Color"=vec(0, 180, 35)*0.8))
+    
+    #EGP:egpAdvBoxOutline(vec2(-94, 46), vec2(46, 82), table("Theme"="E", "SizeNum"=4))
+
+    addDelayedProcess("initialiseEGP4", 1)
+}
+
+function initialiseEGP4() {
+    EGP:egpEvolution(vec2(-42,10), vec2(1.25,1.25))
+    EGP:egpAdvTextLayout("CityEvolutionDisplay","+0", vec2(-33, 10), vec2(15,3), table("VAlign"=1, "Font"="Trebuchet", "FontSize"=30, "Color"=vec(141, 66, 245)*0.8))
+    
+    EGP:egpScrap(vec2(-32,10), vec2(1.25,1.25))
+    EGP:egpAdvTextLayout("CityScrapDisplay", "+0", vec2(-23, 10), vec2(15,3), table("VAlign"=1, "Font"="Trebuchet", "FontSize"=30, "Color"=vec(184, 141, 105)*0.8))
+
+
+    EGP:egpAdvRoundedBox(vec2(120, 30), vec2(60, 36), table("Theme"="C", "Radius"=16))
+    EGP:egpAdvTextLayout("SelectedEvoName", " ", vec2(120, 15), vec2(60, 6), table("HAlign"=1, "VAlign"=1, "Font"="Trebuchet", "FontSize"=42))
+    EGP:egpAdvTextLayout("SelectedEvoDesc", " ", vec2(120, 24), vec2(56, 12), table("HAlign"=0, "VAlign"=0, "Font"="Trebuchet", "FontSize"=30))
+    
+    EGP:egpAdvRoundedBox(vec2(120, 45), vec2(60, 6), table("Theme"="D", "Radius"=16, "OnClick"="purchaseSelectedEvo"))
+    EGP:egpAdvTextLayout("SelectedEvoButton", "Evolve", vec2(120, 45), vec2(60, 6), table("HAlign"=1, "VAlign"=1, "Font"="Trebuchet", "FontSize"=36))
+    
+    EGP:egpAdvTextLayout("SelectedEvoCost", "0 Evo", vec2(120, 38), vec2(60, 6), table("HAlign"=1, "VAlign"=1, "Font"="Trebuchet", "Color"=vec(141, 66, 245)*0.8, "FontSize"=36))
+    
+    #
+    
+    EGP:egpAdvRoundedBox(vec2(-94, 3.5), vec2(44, 5), table("Theme"="D", "Radius"=8))
+    EGP:egpAdvTextLayout("Cities", vec2(-94, 3), vec2(42,3), table("VAlign"=1, "Font"="Trebuchet", "FontSize"=40))
+    
+    EGP:egpList("CityEntryList", "cityEntryList", 0)
+    EGP:egpList("CityProductionList", "productionList", 0)
+    
+    addSubprocess("buildEGPEvolutionTree", table())
+}
+
+function updateCityEntryList(Params:table) {
+    EGP:egpUpdateList("CityEntryList", "cityEntryList", Shared["Client"+ClientIndex, table]["Cities",array]:count())
+    
+    if(SelectedCity > 0) {
+        local City = Structures[cellCoordsToIndex(Shared["Client"+ClientIndex, table]["Cities",array][SelectedCity,vector2]),table]
+        
+        EGP:egpUpdateList("CityProductionList", "productionList", City:getCityProductions():count())
+        
+        
+        local Yields = City["Yields",table]
+        
+        EGP:setFlag("CityProductionDisplay", "Text", Yields["Production",number]:toString())
+        EGP:setFlag("CityFoodDisplay", "Text", (Yields["Food",number]-(City["Population",number]*2)):toString())
+        EGP:setFlag("CityScrapDisplay", "Text", Yields["Scrap",number]:toString())
+        EGP:setFlag("CityEvolutionDisplay", "Text", Yields["Evolution",number]:toString())
+    } else {
+        EGP:egpUpdateList("CityProductionList", "productionList", 0)
+    }
+}
+
+function updateTurnLabel(Params:table) {
+    EGP:setFlag("TurnLabel", "Text", "Turn : " + Shared["Turn",number])
+    
+    local Client = Shared["Client"+ClientIndex, table]
+    
+    EGP:setFlag("EvolutionDisplay", "Text",Client["Evolution",number] + " (+"+Client["EvolutionInc",number]+")")
+    
+    EGP:setFlag("ScrapDisplay", "Text",Client["Scrap",number] + " ("+Client["ScrapInc",number]+")")
+}
+
+function setCityProduction(Index) {
+    local Client = Shared["Client"+ClientIndex, table]
+    local City = Structures[ cellCoordsToIndex( Client["Cities",array][SelectedCity, vector2] ) , table]
+    
+    local NewProduct = City:getCityProductions()[Index, string]
+    
+    if(Client["Built",table]:exists(NewProduct)) {
+        EGP:entity():soundPlay(2,1, "ui/chat_display_text.wav")
+        return
+    }
+    
+    if(Productions[NewProduct, table]["ScrapCost",number] > Client["Scrap",number]) {
+        EGP:entity():soundPlay(2,1, "ui/chat_display_text.wav")
+        return
+    }
+    
+    if(City["Producing",string] != "") {
+        Client["Scrap", number] = Client["Scrap",number] + City:getScrapCost(City["Producing",string])
+    }
+    
+    City["Producing",string] = NewProduct
+    
+    Client["Scrap", number] = Client["Scrap",number] - City:getScrapCost(City["Producing",string]) #Productions[City["Producing",string],table]["ScrapCost",number]
+    
+    SelectedCity = 0
+    
+    EGP:entity():soundPlay(2,1,"ui/buttonclick.wav")
+    
+    updateCityEntryList(table())
+    updateTurnLabel(table())
+}
+
+function enterGameUI(Params:table) {
+    EGP:clearGroup("Menu")
+    
+    EGP:egpUpdateList("ParticipantList", "participantList", 0)
+    
+    initialiseEGP3()
+}
+
+function updatePlayerSet(Params:table) {
+    EGP:setFlag("PlayerLabel", "Text", Player:name())
+    
+    showConfigureEGPWarning()
+}
+
+function waitForPlayerUse(Params:table) {
+    local Players = players()
+    
+    for(I=1, Players:count()) {
+        local Ply = Players[I, entity]
+        
+        if(Ply:pos():distance(EGP:entity():pos()) < 1300 && Ply:weapon():type() == "weapon_crowbar") {
+            
+            if(EGP:egpCursor(Ply):distance(vec2(16,32)) < 60) {
+                
+                if(Ply:keyUse() & changed(Ply:keyUse())) {
+                    "setPlayer"(Ply)
+                    EGP:entity():soundPlay(2,1,"ui/item_drop.wav")
+                }
+            }
+        }
+    }
+}
+
+function number wirelink:inCursor(Pos:vector2, Key:string) {
+    return This:egpObjectContainsPoint(This:getObject(Key)["Index",number],Pos)
+}
+
+function confirmReady() {
+    Shared["Client"+ClientIndex, table]["Ready",number] = 1
+    
+    Shared["Client"+ClientIndex, table]["LobbyStatus",string] = "Ready"
+    
+    EGP:setFlag("FactionReadyText", "Text", "Waiting")
+    
+    EGP:entity():soundPlay(1,1.5,"ui/cyoa_node_absent.wav")
+}
+
+function wirelink:confirmReadyButtonEvent(Event:table) {
+    confirmReady()
+}
+
+function setFaction(Faction:string) {
+    Shared["Client"+ClientIndex, table]["Faction", string] = Faction
+    
+    switch(Faction) {
+        case "Rebel",
+        EGP:entity():soundPlay(1,1,"vo/npc/male01/hacks02.wav")
+        soundPitch(1,random(96,104))
+        soundVolume(1, 0.4)
+        break
+        
+        case "Combine",
+        EGP:entity():soundPlay(1,1,"npc/combine_soldier/vo/affirmative.wav")
+        soundPitch(1,random(96,104))
+        soundVolume(1, 0.4)
+        break
+        
+        case "Undead",
+        EGP:entity():soundPlay(1,1,"npc/zombie/zombie_voice_idle7.wav")
+        soundPitch(1,random(96,104))
+        soundVolume(1, 0.4)
+        break
+        
+        case "MannCo",
+        EGP:entity():soundPlay(1,2.3,"vo/demoman_gibberish03.mp3")
+        soundPitch(1,random(96,104))
+        soundVolume(1, 0.4)
+        break
+        
+        case "GrayGravelCo",
+        EGP:entity():soundPlay(1,2.5,"mvm/mvm_warning.wav")
+        soundPitch(1,random(96,104))
+        soundVolume(1, 0.3)
+        break
+    }
+    
+    EGP:egpUpdateList("FactionSelectList", "factionSelectList", Factions:count())
+    
+    EGP:entity():soundPlay(2,1,"ui/menu_accept.wav")
+    soundPitch(2,random(96,104))
+}
+
+function wirelink:setFactionButtonEvent(Event:table) {
+    local SrcObject = This:getObject(Event["Object",string])
+    
+    setFaction(SrcObject["FactionKey",string])
+}
+
+function wirelink:confirmFactionButtonEvent(Event:table) {
+    hideFactionSelect()
+    showReadyPage()
+}
+
+function waitForReadyUpdate(Params:table) {
+    if(Player:weapon():type() != "weapon_crowbar") { return }
+    
+    if(Player:keyUse() && changed(Player:keyUse())) {
+        EGP:updateInteractions(table("Click"=1, "ClickPos"=EGP:egpCursor(Player)))
+    }
+    
+    if(Shared["Client"+ClientIndex, table]["LobbyStatus",string] == "Waiting" || Shared["Client"+ClientIndex, table]["LobbyStatus",string] == "Ready") {
+        #EGP:egpUpdateList("ParticipantList", "participantList", 4)
+    }  
+}
+
+function inGameEGPUpdate(Params:table) {
+    if(Player:weapon():type() != "weapon_crowbar") { return }
+    
+    if(Player:keyUse() && changed(Player:keyUse())) {
+        local CityList = EGP:getList("CityEntryList")
+        for(I=1,CityList:count()) {
+            if(EGP:inCursor(EGP:egpCursor(Player), CityList[I,string])) {
+                SelectedCity = I
+                updateCityEntryList(table())
+                EGP:entity():soundPlay(2,1,"ui/hint.wav")
+            }
+        }
+        
+        local ProductionList = EGP:getList("CityProductionList")
+        for(I=1,ProductionList:count()) {
+            if(EGP:inCursor(EGP:egpCursor(Player), ProductionList[I,string])) {
+                setCityProduction(I)
+            }
+        }
+        EGP:updateInteractions(table("Click"=1, "ClickPos"=EGP:egpCursor(Player)))
+    }
+}
+
+#
+
+function updateSelectedEvo() {
+    local Faction = Shared["Client"+ClientIndex, table]["Faction",string]
+    local Evo = Evolutions[Faction, table][ SelectedEvo, table ]
+    
+    EGP:setFlag("SelectedEvoName", "Text", Evo["Name",string])
+    EGP:setFlag("SelectedEvoDesc", "Text", Evo["Description",string])
+    EGP:setFlag("SelectedEvoCost", "Text", Evo["Cost",number] +" Evo")
+    
+    local Client = Shared["Client"+ClientIndex, table]
+    if(Client["Evolved",table]:exists(SelectedEvo)) {
+        EGP:setFlag("SelectedEvoButton", "Text", "Evolved")
+    } else {
+        EGP:setFlag("SelectedEvoButton", "Text", "Evolve")
+    } 
+}
+
+function wirelink:setSelectedEvo(Event:table) {
+    local SrcObject = This:getObject(Event["Object",string])
+    
+    SelectedEvo = SrcObject["EvoKey",string]
+    
+    EGP:entity():soundPlay(2,1,"ui/buttonclick.wav")
+    
+    updateSelectedEvo()
+}
+
+function updateAcquiredEvo(Acquired:string) {
+    local Client = Shared["Client"+ClientIndex, table]
+    local Faction = Client["Faction",string]
+    local Evo = Evolutions[Faction,table][SelectedEvo, table]
+    
+    local AcquiredTierNum = ProgressionsTierLookup[Acquired,number]
+    
+    local CurrentTier = Progressions[Faction,table][AcquiredTierNum,array]
+    
+    EGP:setFlag("Evo_"+Acquired+"_Box", "Color", vec(80,110,80))
+    
+    local AcquiredXPos = 1
+    
+    if(CurrentTier:count() > 1) {
+        for(I=1,CurrentTier:count()) {
+            local C = CurrentTier[I,string]
+            if(C != Acquired) {
+                EGP:setFlag("Evo_"+C+"_Box", "Color", vec(60))
+            } else {
+                AcquiredXPos = I
+            }
+        }
+    }
+
+    local NextTier = Progressions[Faction,table][AcquiredTierNum+1,array]
+    
+    if(CurrentTier:count() != NextTier:count()) {
+        for(I=1,NextTier:count()) {
+            local N = NextTier[I,string]
+            
+            EGP:setFlag("Evo_"+N+"_Box", "Color", vec(100))
+        }
+    } else {
+        EGP:setFlag("Evo_"+NextTier[AcquiredXPos,string]+"_Box", "Color", vec(100))
+    }
+}
+
+function wirelink:purchaseSelectedEvo(Event:table) {
+    local Client = Shared["Client"+ClientIndex, table]
+    local Evo = Evolutions[Client["Faction",string],table][SelectedEvo, table]
+    
+    if(Client["Evolved",table]:exists(SelectedEvo)) { return }
+    
+    if(EGP:getObject("Evo_"+SelectedEvo+"_Box")["Color",vector] != vec(100)) { 
+        EGP:entity():soundPlay(2,1, "ui/chat_display_text.wav")
+        return
+    }
+    
+    if(Client["Evolution",number] >= Evo["Cost",number]) {
+        dsSendDirect("AddEvolution", ParentE2, table("ClientIndex"=ClientIndex, "Type"=SelectedEvo))
+        
+        EGP:entity():soundPlay(3,3,"ui/item_drop3_rare.wav")
+        
+        Client["Evolution",number] = Client["Evolution",number] - Evo["Cost",number]
+        
+        
+        updateAcquiredEvo(SelectedEvo)
+        updateSelectedEvo()
+        updateTurnLabel(table())
+    } else {
+        EGP:entity():soundPlay(3,1, "ui/chat_display_text.wav")
+    }
+}
+
+#
+
+function string wirelink:egpEvoTreeEntry(Key:string, Pos:vector2, Color:vector, Text:string, EvoKey:string) {
+    local Background = This:egpAdvRoundedBox(Key+"_Box", Pos, vec2(20,4), table("Color"=Color, "Alpha"=180, "Radius"=20, "EvoKey"=EvoKey, "OnClick"="setSelectedEvo"))
+    local Name = This:egpAdvTextLayout(Key+"_Name", Text, Pos, vec2(20,4), table("HAlign"=1, "VAlign"=1, "Font"="Trebuchet", "FontSize"=28, "Parent"=Background))
+
+    return This:assignChildren(Background, array(Name))
+}
+
+function number buildEGPEvolutionTree(Index, Params:table) {
+    local Faction = Shared["Client"+ClientIndex, table]["Faction",string]
+    local Progression = Progressions[Faction, table]
+    
+    if(Index > Progression:count()) {
+        return 1
+    }
+    
+    local PEntries = Progression[Index, array]
+    
+    local Y = 8 + Index*5
+    
+    local Color = vec(60)
+    if(Index == 1) { Color = vec(100) }
+    
+    for(I=1,PEntries:count()) {
+        local X = 8 + (70/PEntries:count())*((I-1) + 0.5)
+        EGP:egpEvoTreeEntry("Evo_"+PEntries[I,string], vec2(X,Y), Color, Evolutions[Faction, table][ PEntries[I,string], table ]["Name",string], PEntries[I,string])
+    }
+    
+    return 0
+}

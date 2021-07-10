@@ -1,0 +1,48 @@
+@name H2CivClient Chat
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+function onChat(Said:string) {
+    local SaidExp = Said:explode(" ")
+    
+    if(SaidExp[1,string] == "-setCityMod") {
+        local CityIndex = SaidExp[2,string]:toNumber()
+        local Modifier = SaidExp[3,string]
+        local Value = SaidExp[4,string]:toNumber()
+        
+        dsSendDirect("setCityMod", ParentE2, table("ClientIndex"=ClientIndex, "Modifier"=Modifier, "CityIndex"=CityIndex, "Value"=Value))
+        hideChat(1)
+    }
+    
+    if(SaidExp[1,string] == "-setCityYieldMod") {
+        local CityIndex = SaidExp[2,string]:toNumber()
+        local Modifier = SaidExp[3,string]
+        local Value = SaidExp[4,string]:toNumber()
+        
+        dsSendDirect("setCityYieldMod", ParentE2, table("ClientIndex"=ClientIndex, "Modifier"=Modifier, "CityIndex"=CityIndex, "Value"=Value))
+        hideChat(1)
+    }
+    
+    if(SaidExp[1,string] == "-spawnUnit") {
+        local ClientIndex = SaidExp[2,string]:toNumber()
+        local Type = SaidExp[3,string]
+        dsSendDirect("spawnUnit", ParentE2, table("ClientIndex"=ClientIndex, "Pos"=worldToCellCoords(Player:aimPos()), "Type"=Type))
+        hideChat(1)
+    }
+    
+    if(SaidExp[1,string] == "-imitate") {
+        local NewIndex = SaidExp[2,string]:toNumber()
+        ClientIndex = NewIndex
+        hideChat(1)
+    }
+    
+    if(SaidExp[1,string] == "-gm") {
+        dsSendDirect("setCityMod", ParentE2, table("ClientIndex"=ClientIndex, "Modifier"="CityFoodYield", "CityIndex"=1, "Value"=100))
+        dsSendDirect("setCityMod", ParentE2, table("ClientIndex"=ClientIndex, "Modifier"="CityEvoYield", "CityIndex"=1, "Value"=100))
+        dsSendDirect("setCityMod", ParentE2, table("ClientIndex"=ClientIndex, "Modifier"="CityProdYield", "CityIndex"=1, "Value"=100))
+        dsSendDirect("setCityMod", ParentE2, table("ClientIndex"=ClientIndex, "Modifier"="CityScrapYield", "CityIndex"=1, "Value"=100))
+        hideChat(1)
+    }
+}

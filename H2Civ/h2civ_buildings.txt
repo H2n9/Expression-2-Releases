@@ -1,0 +1,105 @@
+@name H2Civ Buildings
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+function number:buildEmergencyRadio(City:table) {
+    City:multModifier("GrowthCost", 0.75)
+    City:addModifier("CityEvoYield", 1)
+    
+    City:addCityProduction("ResearchLab")
+}
+
+function number:buildFoodMarket(City:table) {
+    City:addModifier("CityFoodYield", 2)
+    City:addModifier("CityScrapYield", -1)
+}
+
+#
+
+function number:buildRebelTrainingYard(City:table) {
+    City:multModifier("CombatUnitCost", 1.15)
+    City:addModifier("NewCombatStrength", 8)
+    
+    City:addCityProduction("Rebel_Shocktroopers")
+    City:addCityProduction("Rebel_MilitaryAcademy")
+}
+
+function number:buildCombineTrainingYard(City:table) {
+    City:multModifier("CombatUnitCost", 1.15)
+    City:addModifier("NewCombatStrength", 8)
+    
+    City:addCityProduction("Combine_Elites")
+    City:addCityProduction("Combine_MilitaryAcademy")
+}
+
+#
+
+function number:buildRebelMilitaryAcademy(City:table) {
+    City:multModifier("NewCombatStrengthMult", 1.15)
+    City:multModifier("CombatUnitCost", 1.25)
+    City:addModifier("CityScrapYield", -3)
+}
+
+function number:buildCombineMilitaryAcademy(City:table) {
+    City:multModifier("NewCombatStrengthMult", 1.15)
+    City:multModifier("CombatUnitCost", 1.25)
+    City:addModifier("CityScrapYield", -3)
+}
+
+#
+
+function number:buildLocalGovernment(City:table) {
+    City:addModifier("PopEvoYield", 1)
+    City:addModifier("CityScrapYield", -2)
+}
+
+#
+
+function number:buildCitadel(City:table) {
+    City["HasCitadel", number] = 1
+    City["CitadelProgress",number] = 0
+    
+    startHoloGroup()
+    City:buildCitadelStructure(City["ParentHoloIndex", number], City["ParentEnt", entity]:pos(), ang(), vec(GeneratorSettings["GridScale",number]))
+    City["CitadelHolos", array] = finishHoloGroup()
+    
+    City["ParentEnt",entity]:soundPlay(2, 3.5, "ambient/alarms/doomsday_lift_alarm.wav")
+    soundPitch(2,50)
+    City["ParentEnt",entity]:soundPlay(3, 6, "mvm/mvm_bomb_warning.wav")
+    soundPitch(3,30)
+    
+    # restrict productions in citadel city 
+    City["Productions", table] = table("AcquireScrap")
+    
+    #[# set all other cities to have citadel as built to restrict it to one city
+    local Cities = Shared["Client"+This, table]["Cities",array]
+    
+    for(I=1,Cities:count()) {
+        local City = Structures[cellCoordsToIndex(Cities[I,vector2]),table]
+        City["Built",table]["Citadel", number] = 1
+    }
+    
+    # set tag on client to tell new cities to have citadel marked as built
+    Shared["Client"+This, table]["BuiltCitadel", number] = 1]#
+}
+
+#
+
+function number:buildResearchLab(City:table) {
+    City:addModifier("PopEvoYield", 1)
+    City:addModifier("CityScrapYield", -2)
+}
+
+function number:buildFactory(City:table) {
+    City:addModifier("PopProdYield", 1)
+    City:addModifier("CityScrapYield", -3)
+    City:addModifier("CityEvoYield", -1)
+}
+
+function number:buildWorkshop(City:table) {
+    City:addYieldModifier("ForestProdYield", 1)
+    City:addYieldModifier("ResourceProdYield", 1)
+    City:addModifier("CityScrapYield", -2)
+}

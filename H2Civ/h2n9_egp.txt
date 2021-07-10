@@ -1,0 +1,644 @@
+@name H2n9_EGP
+@persist 
+
+@persist EGPAvailableStore:table EGPSpawnedStore:table EGPObjectStore:table EGPObjectsCreatedStore:table EGPObjectSuspend:table EGPProcessContext:table EGPFontScales:table EGPThemes:table
+@persist EGPGroupStore:table EGPActiveGroup:string
+@persist EGPListStore:table
+@persist EGPInteractables:table
+@persist EGPTransformQueue:table
+@persist EGPBuildQueue:table EGPBuildQueued EGPUpdateQueue:table EGPUpdateQueued
+
+#[
+# Notes :
+    = Previous versions of H2n9_EGP used a single table to contain every egp data table which was then from there separated into objects and available etc,
+      this version instead uses individual global tables representing each of those entries - this is intended to reduce the table depth by 1,
+      increasing the performance at the cost of complexity
+
+    
+    = Some functions have been over-optimised in order to maximise performance; benchmarking was used through this process
+
+#
+]#
+
+#
+
+function number wirelink:id() {
+    return This:entity():id()
+}
+
+#
+
+function registerEGP(EGP:wirelink) {
+    local ID = EGP:id()
+    
+    EGPAvailableStore[ID, array] = array()
+    EGPSpawnedStore[ID, number] = 0
+    
+    EGPObjectStore[ID, table] = table()
+    EGPObjectsCreatedStore[ID, number] = 0
+    
+    EGPObjectSuspend[ID, number] = 0
+    
+    # Are we in a subprocess context?
+    EGPProcessContext[ID,number] = 0
+    
+    EGPFontScales[ID,number] = 1
+    
+    EGPGroupStore[ID, table] = table()
+    
+    EGPListStore[ID,table] = table()
+    
+    EGPInteractables[ID,table] = table()
+    
+    EGP:egpClear()
+}
+
+##
+
+##
+
+function wirelink:setScaling(XAxis:vector2, YAxis:vector2) {
+    This:egpScale(XAxis, YAxis)
+}
+
+function wirelink:defaultScaling() {
+    This:egpScale(vec2(0,32), vec2(0,32))
+}
+
+function wirelink:setFontScale(Scale) {
+    EGPFontScales[This:id(),number] = Scale
+}
+
+## Dynamic Indexing ##
+
+function wirelink:addAvailableIndex(Index) {
+    EGPAvailableStore[This:id(),array]:pushNumber(Index)
+}
+
+function number wirelink:getAvailableIndex() {
+    local ID = This:id()
+    
+    if(EGPAvailableStore[ID,array]:count() == 0) {
+        local Spawned = EGPSpawnedStore[ID, number]
+        
+        if(Spawned <= 300) {
+            EGPSpawnedStore[ID, number] = Spawned + 1
+            This:addAvailableIndex(Spawned + 1)
+        }
+    }
+    
+    return EGPAvailableStore[ID,array]:shiftNumber()
+}
+
+
+## ##
+
+function string wirelink:genKey() {
+    return "K"+EGPObjectsCreatedStore[This:id(), number]
+}
+
+## ##
+
+## Object Handling ##
+
+function string wirelink:createObject(Key:string, Func:string, Flags:table) {
+    local ID = This:id()
+    local Suspend = EGPObjectSuspend[ID, number]
+    
+    local Table = table("Key"=Key, "Func"=Func, "Suspended"=Suspend, "Scale"=1, "Group"=EGPActiveGroup):merge(Flags)
+    
+    EGPObjectStore[ID, table][Key,table] = Table
+    EGPObjectsCreatedStore[ID, number] = EGPObjectsCreatedStore[ID, number] + 1
+    
+    if(!Suspend) {
+        EGPBuildQueue:pushTable(table("EGP"=This, "Key"=Key))
+        if(!EGPBuildQueued) {
+            addSubprocess("buildObjectQueueProcess", table(), table("Rate"=0.8))
+            EGPBuildQueued = 1
+        }
+    }
+    
+    return Key
+}
+
+function string wirelink:createObject(Func:string, Flags:table) {
+    return This:createObject(This:genKey(), Func, Flags)
+}
+
+#
+
+function table wirelink:getObject(Key:string) {
+    return EGPObjectStore[This:id(), table][Key,table]
+}
+
+#
+
+function wirelink:deleteObject(Key:string) {
+    local Object = This:getObject(Key)
+    
+    local Children = Object["Children",array]
+    if(Children:count() > 0) {
+        for(I=1,Children:count()) {
+            This:deleteObject(Children[I,string])
+        }
+    }
+    This:egpRemove(Object["Index", number])
+    This:addAvailableIndex(Object["Index", number])
+    EGPObjectStore[This:id(), table]:unset(Key)
+}
+
+#
+
+function wirelink:resolveBuildObject(Key:string) {
+    local Object = EGPObjectStore[This:id(), table][Key,table]
+    
+    local Index = This:getAvailableIndex()
+    
+    switch(Object["Func",string]) {
+        case "egpBox",
+        This:egpBox( Index, Object["Pos", vector2], Object["Size", vector2] )
+        break
+        
+        case "egpBoxOutline",
+        This:egpBoxOutline( Index, Object["Pos", vector2], Object["Size", vector2] )
+        break
+        
+        case "egpRoundedBox",
+        This:egpRoundedBox( Index, Object["Pos", vector2], Object["Size", vector2] )
+        break
+        
+        case "egpRoundedBoxOutline",
+        This:egpRoundedBoxOutline( Index, Object["Pos", vector2], Object["Size", vector2] )
+        break
+        
+        case "egpText",
+        This:egpText( Index, Object["Text", string], Object["Pos", vector2] )
+        break
+        
+        case "egpTextLayout",
+        This:egpTextLayout( Index, Object["Text",string], Object["Pos",vector2], Object["Size",vector2] )
+        if(!Object:exists("FontSize")) { Object["AutoFontSize",number] = 1 } 
+        break
+        
+        case "egpLine",
+        local Points = Object["Points",array]
+        if(Points:count() < 3) { Points:pushVector2(Points[2,vector2]) }
+        # All lines are created as line strips for better control
+        This:egpLineStrip(Index, Points)
+        Object["Type",string] = "Point"
+        break
+        
+        case "egpPoly",
+        This:egpPoly( Index, Object["Points", array] )
+        Object["Type",string] = "Point"
+        break
+        
+        case "egpPolyOutline",
+        This:egpPolyOutline( Index, Object["Points", array] )
+        Object["Type",string] = "Point"
+        break
+        
+        case "egpCircle",
+        This:egpCircle( Index, Object["Pos", vector2], Object["Size", vector2] )
+        This:egpFidelity(Index, 54)
+        break
+        
+        case "egpCircleOutline",
+        This:egpCircleOutline( Index, Object["Pos", vector2], Object["Size", vector2] )
+        break
+        
+        case "egpWedge",
+        This:egpWedge( Index, Object["Pos", vector2], Object["Size", vector2] )
+        This:egpFidelity(Index, 54)
+        break
+        
+        case "egpTriangle",
+        local Points = Object["Points", array]
+        This:egpTriangle(Index, Points[1,vector2], Points[2,vector2], Points[3,vector2])
+        Object["Type",string] = "Point"
+        break
+        
+        case "egp3DTracker",
+        This:egp3DTracker( Index, Object["Pos3", vector] )
+        break
+        
+    }
+    
+    Object["Index", number] = Index
+    Object["Spawned", number] = 1
+    
+    if(Object:exists("Theme")) {
+        EGPObjectStore[This:id(), table][Key,table] = Object:merge(EGPThemes[Object["Theme",string],table])
+        Object = EGPObjectStore[This:id(), table][Key,table]
+    }
+    
+    if(Object:exists("OnClick")) {
+        EGPInteractables[This:id(), table]:pushString(Object["Key",string])
+    }
+    
+    local FlagKeys = Object:keys()
+    for(I=1,Object:count()) {
+        local FlagKey = FlagKeys[I,string]
+        switch(FlagKey) {
+            #Dont resolve these flags on creation
+            case "Key",
+            break
+            case "Suspended",
+            break
+            case "Func",
+            break
+            case "Pos",
+            break
+            case "Pos3",
+            break
+            case "Size",
+            break
+            case "Spawned",
+            break
+            case "Index",
+            break
+            case "Text",
+            break
+            case "Type",
+            break
+            case "OnClick",
+            break
+            case "OnHover",
+            break
+            
+            # Scale flag is set by default and should be ignored unless value differs
+            case "Scale",
+            #if(Object["Scale", number] != 1) {
+                "resolveFlagObjectUpdate"(This, Object, Key, FlagKey)
+            #}
+            break
+            
+            # Objects that declare a points flag have to be updated explicitly on creation
+            case "Points",
+            #"resolveFlagObjectUpdate"(This, Object, Key, FlagKey)
+            break
+            
+            default,
+            "resolveFlagObjectUpdate"(This, Object, Key, FlagKey)
+            break
+        }
+    }
+    
+    # resolve font size again since it bugs out sometimes when being set at creation
+    if(Object:exists("AutoFontSize")) {
+        "resolveFlagObjectUpdate"(This, Object, Key, "AutoFontSize")
+    } else {
+        if(Object:exists("FontSize")) {
+            "resolveFlagObjectUpdate"(This, Object, Key, "FontSize")
+        }
+    }
+}
+
+# Object Build Subprocess
+
+function number buildObjectQueueProcess(Index, Params:table) {
+    if(Index > EGPBuildQueue:count()) {
+        EGPBuildQueue:clear()
+        EGPBuildQueued = 0
+        return 1
+    }
+    
+    local Object = EGPBuildQueue[Index, table]
+    
+    Object["EGP",wirelink]:resolveBuildObject(Object["Key",string])
+    
+    return 0
+}
+
+## ##
+
+## Child Handling ##
+
+function string wirelink:makeChildOf(Child:string, Parent:string) {
+    EGPObjectStore[This:id(), table][Parent,table]["Children",array]:pushString(Child)
+    return Child
+}
+
+function string wirelink:assignChildren(Parent:string, Children:array) {
+    "setFlag"(This, Parent, "Children", Children)
+    #EGPObjectStore[This:id(), table][Parent,table]["Children",array] = Children
+    return Parent
+}
+
+function string wirelink:getObjectChild(Parent:string, Index) {
+    return EGPObjectStore[This:id(), table][Parent,table]["Children",array][Index, string]
+}
+
+function array wirelink:getObjectChildren(Parent:string) {
+    return EGPObjectStore[This:id(), table][Parent,table]["Children",array]
+}
+
+function string table:getChild(Index) {
+    return This["Children",array][Index, string]
+}
+
+## ##
+
+## ##
+
+## Object Updating ##
+
+# Object updates are pushed to a queue -> setflag does not immediately update object flag value
+function wirelink:updateObjectFlag(QueueData:table) {
+    # If we are already in a subprocess context (e.g. lists), perform flag updates immediately 
+    if(EGPProcessContext[QueueData["EGP",wirelink]:id(),number]) {
+        "resolveFlagUpdate"(QueueData["EGP",wirelink], QueueData["Key",string], QueueData["Flag",string], QueueData)
+        return
+    }
+    
+    EGPUpdateQueue:pushTable(QueueData)
+    
+    if(!EGPUpdateQueued) {
+        addSubprocess("updateObjectFlagQueueProcess", table(), table("Rate"=1))
+        EGPUpdateQueued = 1
+    }
+}
+
+#
+
+function wirelink:setFlag(Key:string, Flag:string, Value) {
+    This:updateObjectFlag(table( "EGP"=This, "Key"=Key, "Flag"=Flag, "Value"=Value, "Type"="n" ))
+}
+
+function wirelink:setFlag(Key:string, Flag:string, Value:vector2) {
+    This:updateObjectFlag(table( "EGP"=This, "Key"=Key, "Flag"=Flag, "Value"=Value, "Type"="v2" ))
+}
+
+function wirelink:setFlag(Key:string, Flag:string, Value:vector) {
+    This:updateObjectFlag(table( "EGP"=This, "Key"=Key, "Flag"=Flag, "Value"=Value, "Type"="v" ))
+}
+
+function wirelink:setFlag(Key:string, Flag:string, Value:string) {
+    This:updateObjectFlag(table( "EGP"=This, "Key"=Key, "Flag"=Flag, "Value"=Value, "Type"="s" ))
+}
+
+function wirelink:setFlag(Key:string, Flag:string, Value:array) {
+    This:updateObjectFlag(table( "EGP"=This, "Key"=Key, "Flag"=Flag, "Value"=Value, "Type"="r" ))
+}
+
+#
+
+function defineTheme(Key:string, Flags:table) {
+    EGPThemes[Key,table] = Flags
+}
+
+#
+
+function wirelink:resolveFlagObjectUpdate(Object:table, Key:string, Flag:string) {
+    local Index = Object["Index",number]
+    
+    switch(Flag) {
+        case "Pos",
+        This:resolveFlagObjectUpdate(Object, Key, "AbsolutePos")
+        break
+        
+        case "AbsolutePos",
+        local ObjectType = Object["Type",string]
+        switch(ObjectType) {
+            case "Point",
+            local LocalPoints = Object["Points",array]
+            local GlobalPoints = array()
+            local Pos = Object["Pos",vector2]
+            
+            # Due to a bug with egpAddVertices and custom scale factors - this also means that polys can be parented - this is a fucking mess
+            local CorrectionScaling = 1
+            if(Object["PointsPastSpawn", number]) {
+                CorrectionScaling = 16 # Set to actual egp scale value
+            }
+            
+            for(I=1,LocalPoints:count()) {
+                GlobalPoints:pushVector2( ( Pos + LocalPoints[I,vector2] * Object["Scale",number] ) * CorrectionScaling)
+            }
+            
+            Object["PointsPastSpawn", number] = 1
+            
+            This:egpAddVertices(Index, GlobalPoints)
+            break
+            
+            default,
+            This:egpPos(Index, Object["Pos",vector2] + (Object["Origin",vector2] * (1-Object["Scale",number])))
+            break
+        }
+        if(Object:exists("FontSize")) {
+            This:egpFont(Index, Object["Font",string], Object["FontSize", number]*EGPFontScales[This:id(), number])
+        }
+        break
+        
+        case "Size",
+        This:resolveFlagObjectUpdate(Object, Key, "AbsoluteSize")
+        break
+        
+        case "AbsoluteSize",
+        This:egpSize(Index, Object["Size",vector2] * Object["Scale",number])
+        if(Object:exists("AutoFontSize")) {
+            This:resolveFlagObjectUpdate(Object, Key, "AutoFontSize")
+        }
+        break
+        
+        case "SizeNum",
+        This:resolveFlagObjectUpdate(Object, Key, "AbsoluteSizeNum")
+        break
+        
+        case "AbsoluteSizeNum",
+        This:egpSize(Index, round(Object["SizeNum",number] * Object["Scale",number]))
+        
+        break
+        
+        case "Radius",
+        This:resolveFlagObjectUpdate(Object, Key, "AbsoluteRadius")
+        break
+        
+        case "AbsoluteRadius",
+        This:egpRadius(Index, round(Object["Radius",number] * Object["Scale",number]))
+        break
+        
+        case "Angle",
+        This:egpAngle(Index, Object[Flag, number])
+        break
+        
+        # EGP parenting
+        case "Parent",
+        This:egpParent(Index, This:getObject(Object[Flag, string])["Index",number])
+        #[if(Object:exists("FontSize")) {
+            This:egpFont(Index, Object["Font",string], Object["FontSize", number]*EGPFontScales[This:id(), number])
+        }]#
+        break
+        
+        #
+        
+        case "Color",
+        This:egpColor(Index, Object[Flag, vector])
+        break
+        
+        case "Alpha",
+        This:egpAlpha(Index, Object[Flag, number])
+        break
+        
+        case "Material",
+        This:egpMaterial(Index, Object[Flag, string])
+        break
+        
+        #
+        
+        case "Text",
+        This:egpSetText(Index, Object[Flag, string])
+        break
+        
+        case "HAlign",
+        This:egpAlign(Index, Object["HAlign", number], Object["VAlign", number])
+        break
+        
+        case "VAlign",
+        This:egpAlign(Index, Object["HAlign", number], Object["VAlign", number])
+        break
+        
+        case "AutoFontSize",
+        if(!Object[Flag,number]) { break } 
+        
+        # temp - get actual scale factor 
+        This:egpFont(Index, Object["Font",string], Object["Size",vector2]:y() * 16)
+        break
+        
+        case "FontSize",
+        This:egpFont(Index, Object["Font",string], Object["FontSize", number]*EGPFontScales[This:id(), number]) 
+        
+        if(Object["AutoFontSize",number] && Object["Func",string] == "egpTextLayout") {
+            Object["AutoFontSize", number] = 0
+        }
+        break
+        
+        case "Font",
+        This:egpFont(Index, Object["Font",string], Object["FontSize", number]*EGPFontScales[This:id(), number])
+        break
+        
+        #
+        
+        case "Points",
+        This:resolveFlagObjectUpdate(Object, Key, "AbsolutePos")
+        break
+        
+        #
+        
+        case "Scale",   
+        This:resolveFlagObjectUpdate(Object, Key, "AbsolutePos")
+        This:resolveFlagObjectUpdate(Object, Key, "AbsoluteSize")
+        This:resolveFlagObjectUpdate(Object, Key, "AbsoluteSizeNum")
+        This:resolveFlagObjectUpdate(Object, Key, "AbsoluteRadius")
+        break
+        
+        case "Children",
+        local Children = Object[Flag, array]
+        for(I=1,Children:count()) {
+            local Child = Children[I,string]
+            "resolveFlagUpdate"(This, Child, "ObjectParent", table("Type"="s", "Value"=Key))
+        }
+        break
+        
+        # Object parenting
+        case "ObjectParent",
+        local Parent = This:getObject(Object["ObjectParent",string])
+        local ParentPos = Parent["Pos",vector2]
+        
+        
+        local NewPos = Object["Pos",vector2] - ParentPos
+        local NewOrigin =  (Parent["Pos",vector2] + Parent["Origin",vector2]) - Object["Pos",vector2]
+        
+        "resolveFlagUpdate"(This, Key, "Parent", table("Type"="s", "Value"=Object["ObjectParent",string]))
+        "resolveFlagUpdate"(This, Key, "Origin", table("Type"="v2", "Value"=NewOrigin))
+        "resolveFlagUpdate"(This, Key, "Pos", table("Type"="v2", "Value"=NewPos))
+        break
+        
+        case "Pos3",
+        This:egpPos(Index, Object[Flag, vector])
+        break
+        
+        case "Group",
+        "addToGroup"(This, Object[Flag, string], Key)
+        break
+        
+        case "Fade",
+        This:egpAlpha(Index, 255-Object[Flag,number])
+        break
+    }
+}
+
+function wirelink:resolveFlagUpdate(Key:string, Flag:string, ValueData:table) {
+    local Object = This:getObject(Key)
+    
+    local ValueType = ValueData["Type",string]
+    
+    switch(ValueType) {
+        case "n",
+        if(Object[Flag, number] == ValueData["Value", number]) { return }
+        Object[Flag, number] = ValueData["Value", number]
+        break
+        
+        case "v2",
+        if(Object[Flag, vector2] == ValueData["Value", vector2]) { return }
+        Object[Flag, vector2] = ValueData["Value", vector2]
+        break
+        
+        case "v",
+        if(Object[Flag, vector] == ValueData["Value", vector]) { return }
+        Object[Flag, vector] = ValueData["Value", vector]
+        break
+        
+        case "s",
+        if(Object[Flag, string] == ValueData["Value", string]) { return }
+        Object[Flag, string] = ValueData["Value", string]
+        break
+        
+        case "r",
+        Object[Flag, array] = ValueData["Value", array]
+        break
+    }
+    
+    if(Object["Children",array]:count() > 0) {
+        local Children = Object["Children",array]
+        
+        for(I=1,Children:count()) {
+            local Child = Children[I,string]
+            switch(Flag) {
+                # Only these flags will be propagated down
+                case "Scale",
+                This:resolveFlagUpdate(Child, Flag, ValueData)
+                break
+                case "Fade",
+                This:resolveFlagUpdate(Child, Flag, ValueData)
+                break
+            }
+        }
+    }
+    
+    if(!Object["Spawned",number]) { return }
+    
+    This:resolveFlagObjectUpdate(Object, Key, Flag)
+}
+
+# Object Update Subprocess
+
+function number updateObjectFlagQueueProcess(Index, Params:table) {
+    if(Index > EGPUpdateQueue:count()) {
+        EGPUpdateQueue:clear()
+        EGPUpdateQueued = 0
+        return 1
+    }
+    
+    local QueueData = EGPUpdateQueue[Index, table]
+    
+    # Just pass queue data directly through to avoid having to create a new table and handle different value types
+    QueueData["EGP",wirelink]:resolveFlagUpdate(QueueData["Key", string], QueueData["Flag",string], QueueData)
+    
+    return 0
+}
+
+#
+
+#
+
+## ##

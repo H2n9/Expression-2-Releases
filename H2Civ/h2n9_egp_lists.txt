@@ -1,0 +1,114 @@
+@name H2n9_EGP_Lists
+
+##
+
+## Lists ## 
+
+function wirelink:setList(Key:string, Table:table) {
+    EGPListStore[This:id(), table][Key, table] = Table
+}
+
+function table wirelink:getList(Key:string) {
+    return EGPListStore[This:id(), table][Key, table]
+}
+
+function wirelink:addListEntry(Key:string, Object:string) {
+    This:getList(Key):pushString(Object)
+}
+
+function wirelink:deleteListEntry(Key:string, Index) {
+    local List = This:getList(Key)
+    This:deleteObject(List[Index, string])
+    
+    List:removeString(Index)
+}
+
+#
+
+function wirelink:egpList(Key:string, EntryFunction:string, Length) {
+    addSubprocess("customListGenerate", table("EGP"=This, "Key"=Key, "Func"=EntryFunction, "Length"=Length), table("Rate"=0.5))
+}
+
+function wirelink:egpUpdateList(Key:string, EntryFunction:string, Length) {
+    if(!EGPListStore[This:id(),table]:exists(Key)) { return }
+    addSubprocess("customListUpdate", table("EGP"=This, "Key"=Key, "Func"=EntryFunction, "Length"=Length), table("Rate"=0.6))
+}
+
+function wirelink:egpUpdateList(Key:string, EntryFunction:string, StartLength, Length) {
+    if(!EGPListStore[This:id(),table]:exists(Key)) { return }
+    addSubprocess("customListUpdate", table("EGP"=This, "Key"=Key, "Func"=EntryFunction, "Length"=Length), table("Rate"=0.9, "StartIndex"=StartLength))
+}
+
+#
+
+function wirelink:egpCachedList(Key:string, EntryFunction:string, CacheLength) {
+    addSubprocess("customListGenerate", table("EGP"=This, "Key"=Key, "Func"=EntryFunction, "Length"=CacheLength), table("Rate"=0.5))
+}
+
+function wirelink:egpUpdateCachedList(Key:string, EntryFunction:string, DesiredLength) {
+    if(!EGPListStore[This:id(),table]:exists(Key)) { return }
+    addSubprocess("customListUpdate", table("EGP"=This, "Key"=Key, "Func"=EntryFunction, "Length"=max(DesiredLength, EGPListStore[This:id(),table][Key,table]:count())), table("Rate"=0.9))
+}
+
+#
+
+# List Subprocesses
+
+function number customListGenerate(Index, Params:table) { # Requires ( EGP, Key, Func, Length ) 
+    local This = Params["EGP", wirelink]
+    local Key = Params["Key",string]
+    local EntryFunction = Params["Func",string]
+    local Length = Params["Length", number]
+    
+    if(Index == 1) {
+        EGPProcessContext[This:id(),number] = 1
+        
+        Params["Table", table] = table()
+    }
+    
+    if(Index > Length) {
+        This:setList(Key, Params["Table", table])
+        
+        EGPProcessContext[This:id(),number] = 0
+        return 1
+    } else {
+        local ObjectKey = EntryFunction(This, Key, Index, 1)[string] # (Key, Index, ShouldCreate)
+        Params["Table", table]:pushString(ObjectKey)
+    }
+    
+    return 0
+}
+
+function number customListUpdate(Index, Params:table) { # Requires ( EGP, Key, Func, Length ) 
+    local This = Params["EGP",wirelink]
+    local Key = Params["Key",string]
+    local EntryFunction = Params["Func", string]
+    local Length = Params["Length", number]
+    local List = This:getList(Key)
+    local G = List:count()
+    
+    if(Index == 1) { EGPProcessContext[This:id(),number] = 1 }
+    if(!This:entity():isValid()) { return 1 }
+    
+    if(Index > max(G, Length)) {
+        EGPProcessContext[This:id(),number] = 0
+        return 1
+    }
+    
+    if(Index > Length) {
+        This:deleteListEntry(Key, Index)
+        return -1
+    }
+    
+    if(G < Index) {
+        local ObjectKey = EntryFunction(This, Key, Index, 1)[string]
+        This:addListEntry(Key, ObjectKey)
+        return 0
+    }
+    
+    EntryFunction(This, Key, Index, 0)
+    
+    return 0
+}
+
+## ##

@@ -1,0 +1,131 @@
+@name H2Civ Signals
+@inputs 
+@outputs 
+@persist 
+@trigger 
+@autoupdate
+
+dsJoinGroup("H2Civ")
+
+listen("NotificationUpdate", "promptNotificationUpdate")
+
+function promptClientInitialise() {
+    dsSend("InitialiseClient", "H2Civ", 0)
+}
+
+function promptClientReset() {
+    dsSend("ResetClient", "H2Civ", 0)
+}
+
+function promptMapLoaded() {
+    dsSend("MapLoaded", "H2Civ", 0)    
+}
+
+function promptPlayersStart() {
+    dsSend("StartGame", "H2Civ", 0)
+}
+
+function promptNewTurn() {
+    dsSend("NewTurn", "H2Civ", 0)
+}
+
+function promptCitiesChanged() {
+    dsSend("CitiesChanged", "H2Civ", 0)
+}
+
+function promptResourcesChanged() {
+    dsSend("ResourcesChanged", "H2Civ", 0)
+}
+
+
+#
+
+function promptNotificationUpdate(Params:table) {
+    local Client = Params["Client",number]
+    dsSendDirect("NotificationUpdate", Shared["Client"+Client, table]["E2",entity],0)
+}
+
+# tells the client that a cell has changed in some way
+function invokeCellChanged(Vec2:vector2) {
+    dsSend("CellChanged", "H2Civ", Vec2)
+}
+
+function updateSignals() {
+    if(dsClk("RegisterClient")) {
+        # Send client their player index
+        Clients += 1
+        dsSendDirect("SetClientIndex", dsGetSender(), Clients)
+    }
+    
+    if(dsClk("DevSpawnUnit")) {
+        local SpawnData = dsGetTable()
+        
+        pushUnitAnimation(Units[cellCoordsToIndex(SpawnData["Pos",vector2]), table], "CombineSoldierAttack", table())
+        #spawnUnit("Rebel_Scouts", SpawnData["ClientIndex",number], SpawnData["Pos",vector2])
+        #spawnUnit(UnitTypes:keys()[randint(1,UnitTypes:count()),string], SpawnData["ClientIndex",number], SpawnData["Pos",vector2])
+    }
+    
+    if(dsClk("DevSpawnStructure")) {
+        local SpawnData = dsGetTable()
+        
+        spawnStructure("Outpost", SpawnData["ClientIndex",number], SpawnData["Pos",vector2])
+    }
+    
+    if(dsClk("MoveUnit")) {
+        local MoveData = dsGetTable()
+        
+        MoveData["Unit",table]:moveUnitTo(MoveData["Pos",vector2])
+    }
+    
+    if(dsClk("AttackUnit")) {
+        local AttackData = dsGetTable()
+        
+        AttackData["Source",table]:attackUnit(AttackData["Target",table])
+    }
+    
+    if(dsClk("AttackStructure")) {
+        local AttackData = dsGetTable()
+        
+        AttackData["Source",table]:attackStructure(AttackData["Target",table])
+    }
+    
+    if(dsClk("UnitSpecialAction")) {
+        local ActionData = dsGetTable()
+        
+        triggerUnitAction(ActionData["Unit",table], ActionData["Type",string])
+    }
+    
+    if(dsClk("AddEvolution")) {
+        local EvoData = dsGetTable()
+        
+        addEvolution(EvoData["ClientIndex",number], EvoData["Type",string])
+    }
+    
+    if(dsClk("setCityMod")) {
+        local SetCityModData = dsGetTable()
+        
+        local Client = Shared["Client"+SetCityModData["ClientIndex",number], table]
+        local City = Structures[ cellCoordsToIndex(Client["Cities",array][SetCityModData["CityIndex",number],vector2]), table]
+        
+        City:setModifier(SetCityModData["Modifier",string], SetCityModData["Value",number])
+        
+        print("Set city mod : " + SetCityModData["Modifier",string] + " : " + SetCityModData["Value",number])
+    }
+    
+    if(dsClk("setCityYieldMod")) {
+        local SetCityModData = dsGetTable()
+        
+        local Client = Shared["Client"+SetCityModData["ClientIndex",number], table]
+        local City = Structures[ cellCoordsToIndex(Client["Cities",array][SetCityModData["CityIndex",number],vector2]), table]
+        
+        City:setYieldModifier(SetCityModData["Modifier",string], SetCityModData["Value",number])
+        
+        print("Set city yield mod : " + SetCityModData["Modifier",string] + " : " + SetCityModData["Value",number])
+    }
+    
+    if(dsClk("spawnUnit")) {
+        local SpawnUnitData = dsGetTable()
+        
+        spawnUnit(SpawnUnitData["Type",string], SpawnUnitData["ClientIndex",number], SpawnUnitData["Pos",vector2])
+    }
+}

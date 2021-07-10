@@ -1,0 +1,31 @@
+@name H2n9_Subprocess_Delayed
+@persist DelayedProcesses:table DIndex
+
+DIndex = 1
+
+function addDelayedProcess(Func:string, Delay) {
+    DelayedProcesses:pushArray(array(Func, Delay, systime()))
+}
+
+function doDelayedProcess(Process:array) {
+    Process[1,string]()
+}
+
+function updateDelayedProcesses() {
+    while(perf()) {
+        if(DIndex > DelayedProcesses:count()) {
+            DIndex = 1
+            
+            return
+        }
+        
+        DelayedProcess = DelayedProcesses[DIndex, array]
+        if(systime() - DelayedProcess[3,number] >= DelayedProcess[2,number]) {
+            doDelayedProcess(DelayedProcess)
+            DelayedProcesses:removeArray(DIndex)
+            DIndex -= 1
+        }
+        
+        DIndex += 1
+    }
+}

@@ -1,0 +1,671 @@
+@name H2Civ Map
+@inputs 
+@outputs 
+@persist MapBase:entity Tiles:table Features:table Roads:table Spawnpoints:array
+@persist P2MEntities:table
+@persist TileTypes:table FeatureTypes:table
+@persist ShouldLoadMap MapFile:string
+@persist Loaded
+@trigger 
+@autoupdate
+
+Tiles = table()
+
+TileTypes = table()
+TileTypes["Plains", table] = table("Name"="Plains", "Material"="phoenix_storms/ps_grass")
+TileTypes["PlainsHills",table] = table("Name"="PlainsHills", "customDrawFunc"="drawHillTile", "Rough"=1, "DrawCount"=3, "Material"="phoenix_storms/ps_grass")
+
+TileTypes["Wasteland", table] = table("Name"="Wasteland", "Material"="phoenix_storms/potato", "Color"=vec4(254,230,187,255))
+
+TileTypes["Coast", table] = table("Name"="Coast", "Material"="models/debug/debugwhite", "Color"=vec4(50,50,185,255), "HeightScale"=0.2)
+TileTypes["Ocean", table] = table("Name"="Ocean", "NoDraw"=1)
+
+TileTypes["Desert", table] = table("Name"="Desert", "Material"="phoenix_storms/egg", "Color"=vec4(250*0.84,197*0.85,132*0.86,255))
+TileTypes["DesertHills",table] = table("Name"="DesertHills", "customDrawFunc"="drawHillTile", "Rough"=1, "DrawCount"=3, "Material"="phoenix_storms/egg", "Color"=vec4(250*0.9,197*0.9,132*0.9,255))
+
+TileTypes["Beach", table] = table("Name"="Beach", "Material"="phoenix_storms/egg", "Color"=vec4(245,178,115,255), "HeightScale"=0.6)
+
+TileTypes["Snow", table] = table("Name"="Snow", "Material"="WTP/leather_2", "Color"=vec4(220*0.95,220*0.95,235*0.95,255))
+TileTypes["SnowHills",table] = table("Name"="SnowHills", "customDrawFunc"="drawHillTile", "Rough"=1, "DrawCount"=3, "Material"="WTP/leather_2", "Color"=vec4(220*0.95,220*0.95,235*0.95,255))
+
+TileTypes["Ice", table] = table("Name"="Ice", "Material"="WTP/paint_2", "Color"=vec4(140,140,235,255), "HeightScale"=0.6)
+
+TileTypes["Mountain", table] = table("Name"="Mountain", "customDrawFunc"="drawMountainTile", "Material"="models/props_wasteland/rockcliff02b", "DrawCount"=2, "Color"=vec4(160,160,160,255))
+
+#
+
+Features = table()
+
+FeatureTypes = table()
+
+FeatureTypes["Forest", table] = table("Name"="Forest", "customDrawFunc"="drawForestFeature", "Material"="models/props_foliage/arbre01", "DrawCount"=5,
+                                      "Rough"=1)
+
+FeatureTypes["SnowForest", table] = table("Name"="Snow Forest", "customDrawFunc"="drawSnowForestFeature", "Material"="models/props_foliage/pine_tree_large_snow", "DrawCount"=5,
+                                      "Rough"=1)
+
+FeatureTypes["DeadForest", table] = table("Name"="Dead Forest", "customDrawFunc"="drawDeadForestFeature", "Material"="models/props_foliage/arbre01_b", "DrawCount"=5, "Color"=vec4(179,146,97,255),
+                                      "Rough"=1)
+
+
+FeatureTypes["Resource", table] = table("Name"="Resource", "customDrawFunc"="drawResourceFeature", "Material"="models/props_foliage/coastrock02", "DrawCount"=6)
+
+FeatureTypes["Buoys", table] = table("Name"="Buoys", "customDrawFunc"="drawBuoyFeature", "Material"="models/props_wasteland/buoy_01", "DrawCount"=3)
+FeatureTypes["Driftwood", table] = table("Name"="Driftwood", "customDrawFunc"="drawDriftwoodFeature", "Material"="models/props_foliage/driftwood_01a", "DrawCount"=3)
+
+#models/props/hr_massive/standing_rock_2/standing_rock_2
+# models/props_foliage/tree_pine_extrasmall_snow.mdl snow tree
+
+Roads = table()
+
+P2MEntites = table()
+
+Shared["Tiles",table] = Tiles
+Shared["Features",table] = Features
+Shared["Roads",table] = Roads
+
+function table getTile(Vec2:vector2) {
+    return Tiles[cellCoordsToIndex(Vec2), table]
+}
+
+function entity:drawHillTile(Pos:vector, Ang:angle, Scale:vector) {
+    This:p2mPushModel(1,"models/holograms/hexagon.mdl", Pos, Ang, Scale)
+    
+    This:p2mPushModel(1,"models/holograms/hexagon.mdl", Pos+MapBase:up()*3*Scale:x()/2, Ang, vec(Scale:x()*0.9, Scale:y()*0.2, Scale:z()*0.9))
+    This:p2mPushModel(1,"models/holograms/hexagon.mdl", Pos+MapBase:up()*3*Scale:x()/2, Ang, vec(Scale:x()*0.75, Scale:y()*0.4, Scale:z()*0.75))
+    #local Model = array("rock_coast02e.mdl","rock_coast02a.mdl", "rock_coast02f.mdl", "rock_coast02c.mdl")[randint(1,4),string]
+    
+    #This:p2mPushModel(1,"models/props_foliage/"+Model, Pos+MapBase:up()*4*Scale:x()/2, Ang + ang(0,random(-180,180),0), vec(Scale:x(),Scale:x(),Scale:x()/2)/75)    
+}
+
+function entity:drawMountainTile(Pos:vector, Ang:angle, Scale:vector) {
+    This:p2mPushModel(1,"models/holograms/hexagon.mdl", Pos, Ang, Scale)
+    
+    local Model = array("cluster02a.mdl", "cluster02b.mdl", "cluster02c.mdl")[randint(1,3),string]
+    
+    This:p2mPushModel(1,"models/props_wasteland/rockcliff_"+Model, Pos+MapBase:up()*(12+ 2.5*Scale:x() ), Ang+ang(0,randint(-90,90),0), vec(Scale:x())/60)    
+}
+
+function entity:pushTreeFeature(Pos:vector, Ang:angle, Scale:vector) {
+    local Model = array("models/props_foliage/tree_pine05.mdl", "models/props_foliage/tree_pine04.mdl", "models/props_foliage/tree_pine06.mdl", "models/props_foliage/tree_pine_large.mdl")[randint(1,4), string]
+    This:p2mPushModel(1,Model, Pos, Ang, vec(0.010,0.010,0.006)*Scale)
+}
+
+function entity:drawForestFeature(Pos:vector, Ang:angle, Scale:vector) {
+    This:pushTreeFeature(Pos, Ang, Scale)
+    This:pushTreeFeature(Pos + randvec(vec(-3,-3,0), vec(3,3,0))*Scale, Ang, Scale)
+    This:pushTreeFeature(Pos + randvec(vec(-3,-3,0), vec(3,3,0))*Scale, Ang, Scale)
+    This:pushTreeFeature(Pos + randvec(vec(-3,-3,0), vec(3,3,0))*Scale, Ang, Scale)
+    #This:pushTreeFeature(Pos + randvec(vec(-3,-3,0), vec(3,3,0))*Scale, Ang, Scale)
+}
+
+function entity:pushSnowTreeFeature(Pos:vector, Ang:angle, Scale:vector) {
+    This:p2mPushModel(1,"models/props_foliage/tree_pine_extrasmall_snow.mdl", Pos, Ang + ang(0,random(-90,90),0), vec(0.010,0.010,0.008+random(-0.002,0.005))*Scale)
+}
+
+function entity:drawSnowForestFeature(Pos:vector, Ang:angle, Scale:vector) {
+    This:pushSnowTreeFeature(Pos, Ang, Scale)
+    This:pushSnowTreeFeature(Pos + randvec(vec(-3,-3,0), vec(4,4,0))*Scale, Ang, Scale)
+    This:pushSnowTreeFeature(Pos + randvec(vec(-3,-4,0), vec(4,4,0))*Scale, Ang, Scale)
+    This:pushSnowTreeFeature(Pos + randvec(vec(-3,-3,0), vec(4,4,0))*Scale, Ang, Scale)
+    This:pushSnowTreeFeature(Pos + randvec(vec(-3,-3,0), vec(4,4,0))*Scale, Ang, Scale)
+}
+
+function entity:pushDeadForestFeature(Pos:vector, Ang:angle, Scale:vector) {
+    local Model = array("models/props_foliage/tree_dead04.mdl", "models/props_foliage/tree_dead03.mdl", "models/props_foliage/tree_dead02.mdl")[randint(1,3), string]
+    This:p2mPushModel(1,Model, Pos, Ang + ang(0,random(-90,90),0), vec(0.010,0.010,0.008+random(-0.002,0.005))*Scale)
+}
+
+function entity:drawDeadForestFeature(Pos:vector, Ang:angle, Scale:vector) {
+    This:pushDeadForestFeature(Pos, Ang, Scale)
+    This:pushDeadForestFeature(Pos + randvec(vec(-3,-3,0), vec(4,4,0))*Scale, Ang, Scale)
+    This:pushDeadForestFeature(Pos + randvec(vec(-3,-4,0), vec(4,4,0))*Scale, Ang, Scale)
+    This:pushDeadForestFeature(Pos + randvec(vec(-3,-3,0), vec(4,4,0))*Scale, Ang, Scale)
+    This:pushDeadForestFeature(Pos + randvec(vec(-3,-3,0), vec(4,4,0))*Scale, Ang, Scale)
+}
+
+function entity:pushResourceRock(Pos:vector, Ang:angle, Scale:vector) {
+    local Model = array("standing_rock_1/standing_rock_1_small.mdl","standing_rock_2/standing_rock_2_small.mdl", "standing_rock_3/standing_rock_3_small.mdl", "standing_rock_4/standing_rock_4.mdl", "standing_rock_5/standing_rock_5.mdl")[randint(1,4), string]
+    This:p2mPushModel(1,"models/props/hr_massive/" + Model, Pos, Ang + ang(0,random(-90,90),0), vec(0.02,0.02,0.02)*Scale)
+}
+
+function entity:drawResourceFeature(Pos:vector, Ang:angle, Scale:vector) {
+    This:pushResourceRock(Pos + vec(sin(random(-30,90))*Scale:x()*3, cos(random(-180,180))*Scale:x()*3,-0.25*Scale:z()), Ang, Scale)
+    This:pushResourceRock(Pos + vec(sin(random(-30,90))*Scale:x()*3, cos(random(-180,180))*Scale:x()*3,-0.25*Scale:z()), Ang, Scale)
+    This:pushResourceRock(Pos + vec(sin(random(-30,90))*Scale:x()*3, cos(random(-180,180))*Scale:x()*3,-0.25*Scale:z()), Ang, Scale)
+    This:pushResourceRock(Pos + vec(sin(random(-90,30))*Scale:x()*3, cos(random(-180,180))*Scale:x()*3,-0.25*Scale:z()), Ang, Scale)
+    This:pushResourceRock(Pos + vec(sin(random(-90,30))*Scale:x()*3, cos(random(-180,180))*Scale:x()*3,-0.25*Scale:z()), Ang, Scale)
+    This:pushResourceRock(Pos + vec(sin(random(-90,30))*Scale:x()*3, cos(random(-180,180))*Scale:x()*3,-0.25*Scale:z()), Ang, Scale)
+}
+
+function entity:pushBuoy(Pos:vector, Ang:angle, Scale:vector) {
+    This:p2mPushModel(1,"models/props_wasteland/buoy01.mdl", Pos+vec(random(-1.1,-1.1), random(1.1,1.1), 0)*Scale, Ang + ang(0,random(-90,90),0), Scale*vec(0.015,0.015,0.01))
+}
+
+function entity:drawBuoyFeature(Pos:vector, Ang:angle, Scale:vector) {
+    This:pushBuoy(Pos + vec(2*random(0.6,1),2*random(0.6,1),-0.8)*Scale, Ang, Scale)
+    This:pushBuoy(Pos + vec(-2*random(0.6,1),2*random(0.6,1),-0.8)*Scale, Ang, Scale)
+    This:pushBuoy(Pos + vec(0,-2*random(0.6,1),-0.8)*Scale, Ang, Scale)
+}
+
+function entity:pushDriftwood(Pos:vector, Ang:angle, Scale:vector) {
+    local Model = array("driftwood_clump_03a.mdl","driftwood_clump_02a.mdl","driftwood_clump_01a.mdl")[randint(1,3), string]
+    This:p2mPushModel(1,"models/props_foliage/"+Model, Pos, Ang + ang(0,random(-90,90),0), Scale*vec(0.015,0.015,0.01))
+}
+
+function entity:drawDriftwoodFeature(Pos:vector, Ang:angle, Scale:vector) {
+    This:pushDriftwood(Pos + vec(2*random(0.6,1),2*random(0.6,1),-1.25)*Scale, Ang, Scale)
+    This:pushDriftwood(Pos + vec(-2*random(0.6,1),2*random(0.6,1),-1.25)*Scale, Ang, Scale)
+    This:pushDriftwood(Pos + vec(0,-2*random(0.6,1),-1.25)*Scale, Ang, Scale)
+}
+
+function entity:drawRoad(Pos:vector, Ang:angle, Scale:vector, Road:table) {
+    if(Road:exists("From")) {
+        local OtherPos = Tiles[cellCoordsToIndex(Road["From",vector2]),table]:getTileTop()-MapBase:pos()
+        local FromDir = (OtherPos - Pos):normalized()
+        
+        local FromPos = Pos + (FromDir * Scale:x() * 3) + MapBase:up()*0.1
+        local Dir = (FromPos-Pos):toAngle()
+        local Dist = Pos:distance(FromPos)
+        
+        
+        This:p2mPushModel(1,"models/holograms/cube.mdl", FromPos, Dir, vec(Dist/24,0.1,0.03)*Scale)
+    }
+    if(Road:exists("To")) {
+        local OtherPos = Tiles[cellCoordsToIndex(Road["To",vector2]),table]:getTileTop()-MapBase:pos()
+        local ToDir = (OtherPos - Pos):normalized()
+        
+        local ToPos = Pos + (ToDir * Scale:x() * 3) + MapBase:up()*0.1
+        local Dir = (ToPos-Pos):toAngle()
+        local Dist = Pos:distance(ToPos)
+        
+        This:p2mPushModel(1,"models/holograms/cube.mdl", ToPos, Dir, vec(Dist/24,0.1,0.03)*Scale)
+    }
+}
+
+function constructMapBase(Position:vector) {
+    local OffsetPos = Position + vec(0,32*40,32)
+    local P = propSpawn("models/hunter/plates/plate32x32.mdl", OffsetPos, 1)
+    
+    P:setMaterial("models/debug/debugwhite")
+    P:setColor(vec(0,40,100))
+    
+    Shared["MapBase",entity] = P
+    
+    MapBase = P
+    
+    holoCreate(1, OffsetPos + vec(0,0,1), vec(0.98,0.98,0.6))
+    holoModel(1, "models/hunter/plates/plate32x32.mdl")
+    holoMaterial(1, "models/debug/debugwhite")
+    holoColor(1, vec(0,50,140))
+    holoParent(1, P)
+}
+
+function number generateMap(Index, Params:table) {
+    local Settings = GeneratorSettings
+    
+    local HeightSeed = Params["HeightSeed", vector2]
+    local TempSeed = Params["TempSeed", vector2]
+    
+    local Width = Settings["Width", number]
+    local Height = Settings["Height", number]
+    
+    if(Index > Width * Height) {
+        addSubprocess("generateMapCleanupPass", table())
+        return 1
+    }
+    
+    local X = (Index-1)%Width
+    local Y = floor((Index-1)/Width)
+    
+    local H = 0.75 * perlinNoise2(X/10 + HeightSeed:x(), Y/10 + HeightSeed:y())
+            + 0.65 * perlinNoise2(X/20 + HeightSeed:x(), Y/20 + HeightSeed:y())
+            + 0.4 * perlinNoise2(X/35 + HeightSeed:x(), Y/35 + HeightSeed:y())
+    
+    local T = perlinNoise2(X/15 + TempSeed:x(), Y/15 + TempSeed:y())*0.8
+    
+    local Type = "Ocean"
+    
+    #Reduce Height at Edges
+    
+    if(X <= 4) {
+        H -= (4-X)*0.4 + random(-0.1, 0.1)
+    }
+    
+    if(X >= Width-5) {
+        H -= (X-(Width-5))*0.4 + random(-0.1, 0.1)
+    }
+    
+    if(Y <= 4) {
+        H -= (4-Y)*0.4 + random(-0.1, 0.1)
+    }
+    
+    if(Y >= Height-5) {
+        H -= (Y-(Height-5))*0.4 + random(-0.1, 0.1)
+    }   
+    
+    # Poles
+    if(Y <= 5) { 
+        T = -(5-Y)*0.3 + random(-0.3,0.5)
+        if(T < -0.8) { Type = "Ice" }
+    }
+    if(Y >= Height-6) { 
+        T = -((Y-(Height-6)))*0.3 + random(-0.3,0.5)
+        if(T < -0.8) { Type = "Ice" }
+    }
+    if(abs(Y-(Height/2)) <= 5) {
+        T += (6-abs(Y-(Height/2)))*0.15 + random(-0.3, 0.3)
+    }
+    
+    if(H>0) { 
+        Type = "Plains"
+        if(H > 0.08 && H < 0.65 && T < -0.03 && T > -0.5) {
+            Type = "Wasteland"
+        }
+        if(T > 0.5 && H > 0.18) {
+            Type = "Desert"
+        }
+        if(T < -0.6) {
+            Type = "Snow"
+        }
+    }
+    if(H>1.1) {
+        if(Type == "Plains") {
+            Type = "PlainsHills"
+        }
+        if(Type == "Desert") {
+            Type = "DesertHills"
+        }
+        if(Type == "Snow") {
+            Type = "SnowHills"
+        }
+    }
+    if(H>1.48) {
+        Type = "Mountain"    
+    }
+    
+    Tiles:pushTable(table("X"=X, "Y"=Y, "H"=H*0.7, "DrawCount"=1, "HeightScale"=1, "Color"=vec4(255), "NoDraw"=0):merge( TileTypes[Type,table] ))
+    
+    if(Type == "Plains") {
+        if(randint(0,100) > 90) {
+            Features[Index,table] = table("X"=X, "Y"=Y, "DrawCount"=1, "HeightScale"=1, "Color"=vec4(255), "NoDraw"=0):merge( FeatureTypes["Forest",table] )
+        }
+    }
+    if(Type == "Snow") {
+        if(randint(0,100) > 90) {
+            Features[Index,table] = table("X"=X, "Y"=Y, "DrawCount"=1, "HeightScale"=1, "Color"=vec4(255), "NoDraw"=0):merge( FeatureTypes["SnowForest",table] )
+        }
+    }
+    if(Type == "Wasteland") {
+        if(randint(0,100) > 88) {
+            Features[Index,table] = table("X"=X, "Y"=Y, "DrawCount"=1, "HeightScale"=1, "Color"=vec4(255), "NoDraw"=0):merge( FeatureTypes["DeadForest",table] )
+        }
+    }
+    if(Type == "Plains" || Type == "Snow") {
+        if(randint(0,100) > 97) {
+            Features[Index,table] = table("X"=X, "Y"=Y, "DrawCount"=1, "HeightScale"=1, "Color"=vec4(255), "NoDraw"=0):merge( FeatureTypes["Resource",table] )
+        }
+    }
+    
+    return 0
+
+}
+
+function mapSetOceanNeighboursTo(Tile:table, Type:string) {
+    local Neighbours = getNeighbourCoords(Tile:getPos())
+        
+    for(I=1,Neighbours:count()) {
+        if(!inrange(Neighbours[I,vector2], vec2(0,0), vec2(GeneratorSettings["Width",number]-1, GeneratorSettings["Height", number]-1))) { continue }
+            
+        local TIndex = cellCoordsToIndex(Neighbours[I,vector2])
+        local Other = Tiles[TIndex, table]
+            
+        if(Other["Name",string] == "Ocean") {
+            Tiles[TIndex, table] = Other:merge( TileTypes[Type,table] )
+            Tiles[TIndex, table]["NoDraw",number] = 0
+        }
+    }
+}
+
+function number generateMapCleanupPass(Index, Params:table) {
+    local Settings = GeneratorSettings
+    
+    local Width = Settings["Width", number]
+    local Height = Settings["Height", number]
+    local Scale = Settings["GridScale", number]
+    
+    if(Index > Width * Height) {
+        addSubprocess("generateMapCleanupPass2", table())
+        return 1
+    }
+    
+    local Tile = Tiles[Index, table]
+    
+    if(Tile["Name",string] == "Plains") {
+        mapSetOceanNeighboursTo(Tile, "Coast")
+        return 0
+    }
+    
+    if(Tile["Name",string] == "Desert") {
+        mapSetOceanNeighboursTo(Tile, "Coast")
+        return 0
+    }
+    
+    if(Tile["Name",string] == "Snow") {
+        mapSetOceanNeighboursTo(Tile, "Ice")
+        return 0
+    }
+    
+    if(Tile["Name",string] == "Wasteland") {
+        mapSetOceanNeighboursTo(Tile, "Coast")
+        return 0
+    }
+    
+    return 0
+}
+
+function number generateMapCleanupPass2(Index,Params:table) {
+    local Settings = GeneratorSettings
+    
+    local Width = Settings["Width", number]
+    local Height = Settings["Height", number]
+    local Scale = Settings["GridScale", number]
+    
+    if(Index > Width * Height) {
+        addSubprocess("dumbSpawnpointGenerator", table())
+        return 1
+    }
+    
+    local Tile = Tiles[Index, table]
+    
+    if(Tile["Name",string] == "Coast") {
+        if(randint(0,100) > 96) {
+            Features[Index,table] = table("X"=Tile["X",number], "Y"=Tile["Y",number], "DrawCount"=1, "HeightScale"=1, "Color"=vec4(255), "NoDraw"=0):merge( FeatureTypes["Buoys",table] )
+            return 0
+        }
+        
+        if(randint(0,100) > 94) {
+            Features[Index,table] = table("X"=Tile["X",number], "Y"=Tile["Y",number], "DrawCount"=1, "HeightScale"=1, "Color"=vec4(255), "NoDraw"=0):merge( FeatureTypes["Driftwood",table] )
+        }
+    }
+    
+    return 0
+}
+
+function number dumbSpawnpointGenerator(Index, Params:table) {
+    if(Spawnpoints:count() >= 4 || Index > 1000) {
+        addSubprocess("buildMapRuins", table(), table("Rate"=0.9))
+        addSubprocess("buildMapRuinsDocks", table(), table("Rate"=0.9))
+        addSubprocess("buildMapRefugees", table(), table("Rate"=0.9))
+        return 1
+    }
+    
+    local RandomPos = vec2(randint(2,GeneratorSettings["Width",number]-3), randint(2, GeneratorSettings["Height",number]-3))
+    
+    local Tile = Tiles[cellCoordsToIndex(RandomPos), table]
+    
+    if(Tile["Name", string] == "Plains" || Tile["Name", string] == "Snow" || Tile["Name", string] == "Desert" || Tile["Name", string]:find("Hills")) {
+        for(I=1,Spawnpoints:count()) {
+            if(cellDistance(RandomPos, Spawnpoints[I,vector2]) < 14) {
+                return 0
+            }
+        }
+        
+        Spawnpoints:pushVector2(RandomPos)
+    }
+    
+    return 0
+}
+
+function entity createP2MEntity(Key:string, Material:string, Color:vector4) {
+    local Ent = p2mCreate(1,MapBase:pos(), ang())
+    
+    Ent:p2mSetMaterial(1,Material)
+    Ent:p2mSetColor(1,Color)
+    Ent:p2mSetParent(MapBase)
+    
+    P2MEntities[Key,array] = array(Ent,1)
+    return Ent
+}
+
+function entity getOrCreateP2MEntity(Key:string, Material:string, Color:vector4, Increment) {
+    if(!P2MEntities:exists(Key)) {
+        return createP2MEntity(Key, Material, Color)
+    } else {
+        if(P2MEntities[Key,array][2,number]+Increment > 250) {
+            P2MEntities[Key, array][1,entity]:p2mBuild()
+            
+            return createP2MEntity(Key, Material, Color)
+        }
+    
+        P2MEntities[Key,array][2,number] = P2MEntities[Key,array][2,number] + Increment
+        return P2MEntities[Key,array][1,entity]
+    }
+}
+
+function number drawMap(Index, Params:table) {    
+    local Settings = GeneratorSettings
+    
+    local Width = Settings["Width", number]
+    local Height = Settings["Height", number]
+    local Scale = Settings["GridScale", number]
+    
+    if(Index > Width * Height) {
+        # build remaining unfinished p2m entities
+        for(I=1,P2MEntities:count()) {
+            P2MEntities[P2MEntities:keys()[I,string], array][1,entity]:p2mBuild()
+        }
+        
+        "setTurnLoadingHoloAlpha"(0)
+        
+        Loaded = 1
+        Shared["Loaded",number] = 1
+        "promptMapLoaded"()
+        
+        return 1
+    }
+    
+    local X = (Index-1)%Width
+    local Y = floor((Index-1)/Width)
+    local Off = (Y%2 - 0.5)/2
+    
+    local Pos = MapBase:pos() + (MapBase:forward() * (X + Off - ((Width-1)/2))*(6*sqrt(3)*Scale)) + (MapBase:right() * ( Y - ((Height-1)/2))*(9*Scale)) + MapBase:up()*3
+    
+    local Tile = Tiles[Index, table]
+    
+    if(!Tile["NoDraw",number]) {
+        local P2M = getOrCreateP2MEntity(Tile["Name",string], Tile["Material",string], Tile["Color",vector4], Tile["DrawCount",number])
+        
+        local TilePos = Pos-MapBase:pos() + MapBase:up() * max(Tile["H",number],0)*6
+        
+        if(Tile:exists("customDrawFunc")) {
+            Tile["customDrawFunc", string](P2M, TilePos, ang(), vec(Scale,1*Tile["HeightScale",number],Scale))
+            # replace with proper increment system
+            P2MEntities[Tile["Name",string],array][2,number] = P2MEntities[Tile["Name",string],array][2,number] + 1
+        } else {
+            P2M:p2mPushModel(1,"models/holograms/hexagon.mdl", TilePos, ang(), vec(Scale,1*Tile["HeightScale",number],Scale))    
+        }
+    }
+    
+    if(Features:exists(Index)) {
+        local Feature = Features[Index, table]
+        
+        local P2M = getOrCreateP2MEntity(Feature["Name",string], Feature["Material",string], Feature["Color",vector4], Feature["DrawCount",number])
+        local TilePos = Pos-MapBase:pos() + MapBase:up() * max(Tile["H",number],0)*6 + MapBase:up()*6
+        
+        Feature["customDrawFunc", string](P2M, TilePos, ang(), vec(Scale,Scale,Scale*Feature["HeightScale",number]))
+        
+    }
+    
+    if(Roads:exists(Index)) {
+        local Road = Roads[Index, table]
+        # sprops/textures/sprops_metal2
+        #phoenix_storms/roadside
+        local P2M = getOrCreateP2MEntity("Road", "phoenix_storms/roadside", vec4(160,160,160,255), 2) 
+        local TilePos = Pos-MapBase:pos() + MapBase:up() * max(Tile["H",number],0)*6 + MapBase:up()*(6+ (Tile["Name",string]:find("Hill"))*0.39) 
+        
+        P2M:drawRoad(TilePos, ang(), vec(Scale,Scale,Scale), Road)
+        
+    }
+    
+    return 0
+}
+
+function number buildMapRuins(Index, Params:table) {
+    
+    if(holoRemainingSpawns() < 7) { return -1 }
+    
+    if(Index > 6) {
+        return 1
+    }
+    
+    local RandomPos = vec2(randint(2,GeneratorSettings["Width",number]-3), randint(2, GeneratorSettings["Height",number]-3))
+    
+    local Tile = Tiles[cellCoordsToIndex(RandomPos), table]
+    
+    if(Tile["Name", string] == "Plains" || Tile["Name", string] == "Snow") {
+        if("structureInRange"(RandomPos, "Ruins", 2)[number]) { return -1 }
+        "spawnStructure"("Ruins", 0, RandomPos)
+        return 0
+    }
+    
+    return -1   
+}
+
+function number buildMapRuinsDocks(Index, Params:table) { 
+    if(holoRemainingSpawns() < 8) { return -1 }
+    
+    if(Index > 6) {
+        return 1
+    }
+    
+    local RandomPos = vec2(randint(2,GeneratorSettings["Width",number]-3), randint(2, GeneratorSettings["Height",number]-3))
+    
+    local Tile = Tiles[cellCoordsToIndex(RandomPos), table]
+    
+    if(Tile["Name", string] == "Coast") {
+        if("structureInRange"(RandomPos, "Ruins", 2)[number]) { return -1 }
+        
+        local LandTile = vec2(-1,-1)
+        local Neighbours = getNeighbourCoords(RandomPos)
+        for(I=1,Neighbours:count()) {
+            local OTile = Tiles[cellCoordsToIndex(Neighbours[I,vector2]), table]
+            
+            if(OTile["Name",string] == "Plains" || OTile["Name",string] == "Desert") {
+                LandTile = OTile:getPos()
+            }
+        }
+        if(LandTile == vec2(-1,-1)) { return -1 }
+        
+        local Structure = "spawnStructure"("Ruins", 0, RandomPos)[table]
+        
+        local Ang = (cellCoordsToWorld(LandTile) - cellCoordsToWorld(RandomPos)):normalized():toAngle():setPitch(0):setRoll(0) + ang(0,180,0)
+        Structure["SpecialAng", angle] = Ang
+        
+        return 0
+    }
+    
+    return -1   
+}
+
+function number buildMapRefugees(Index, Params:table) {
+    
+    if(holoRemainingSpawns() < 7) { return -1 }
+    
+    if(Index > 28) {
+        addSubprocess("buildMapNests", table())
+        return 1
+    }
+    
+    local RandomPos = vec2(randint(2,GeneratorSettings["Width",number]-3), randint(2, GeneratorSettings["Height",number]-3))
+    
+    local Tile = Tiles[cellCoordsToIndex(RandomPos), table]
+    
+    if(Tile["Name", string] == "Plains" || Tile["Name", string] == "Snow" || Tile["Name", string] == "Desert") {
+        if("structureInRange"(RandomPos, "Refugees", 3)[number]) { return -1 }
+        "spawnStructure"("Refugees", 0, RandomPos)
+        return 0
+    }
+    
+    return -1   
+}
+
+function number buildMapNests(Index, Params:table) {
+    
+    if(holoRemainingSpawns() < 7) { return -1 }
+    
+    if(Index > 7) {
+        timer("delayDrawMap", 1000)
+        #addSubprocess("buildMapRoads", table())
+        return 1
+    }
+    
+    local RandomPos = vec2(randint(2,GeneratorSettings["Width",number]-3), randint(2, GeneratorSettings["Height",number]-3))
+    
+    local Tile = Tiles[cellCoordsToIndex(RandomPos), table]
+    
+    if(Tile["Name", string] == "Plains" || Tile["Name", string] == "Snow" || Tile["Name", string] == "Desert" || Tile["Name", string] == "Wasteland" || Tile["Name", string] == "PlainsHills" || Tile["Name", string] == "DesertHills") {
+        if("structureInRange"(RandomPos, "Nest", 2)[number]) { return -1 }
+        local Nest = "spawnStructure"("Nest", 0, RandomPos)[table]
+        Nest["LastSpawn", number] = randint(-6,2)
+        return 0
+    }
+    
+    return -1   
+}
+
+function number buildMapRoads(Index, Params:table) {
+    if(Index > Structures:count()) {
+        timer("delayDrawMap", 30000)
+        return 1
+    }
+    
+    local Structure = Structures[Structures:keys()[Index, number], table]
+    
+    #if(Structure["Name",string] == "Ruins") {
+    if(randint(0,100)>50) {
+        awaitPathTo(Structure:getPos(), Structures[Structures:keys()[randint(1,Structures:count()), number], table]:getPos(), "LandNormal", "buildRoadCallback")
+        if(randint(0,100)>80) {
+            awaitPathTo(Structure:getPos(), Structures[Structures:keys()[randint(1,Structures:count()), number], table]:getPos(), "LandNormal", "buildRoadCallback")
+        }
+    }
+    return 0
+}
+
+function buildRoadCallback(Path:array) {
+    addSubprocess("buildRoadAlongPath",table("Path"=Path))
+}
+
+function number buildRoadAlongPath(Index, Params:table) {
+    local Path = Params["Path",array]
+    
+    if(Index > Path:count()) {
+        return 1
+    }
+    
+    local BuildPos = Path[Index, vector2]
+    
+     
+    local RoadTable = table("X"=BuildPos:x(), "Y"=BuildPos:y())
+    
+    if(Index > 1) {
+        RoadTable["From", vector2] = Path[Index-1, vector2]
+    }
+    
+    if(Index < Path:count()) {
+        RoadTable["To", vector2] = Path[Index+1, vector2]
+    }
+    
+    Roads[cellCoordsToIndex(BuildPos), table] = RoadTable
+    
+    return 0
+}
+
+function beginCreateMap() {
+    if(ShouldLoadMap) {
+    } else {
+        addSubprocess("generateMap", table("HeightSeed"=vec2(random(-10000,100), random(-10000,10000)), "TempSeed"=vec2(random(-10000,10000), random(-10000,10000))))
+    }    
+}
+
+constructMapBase(entity():pos())

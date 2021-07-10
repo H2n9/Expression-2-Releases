@@ -1,0 +1,53 @@
+@name H2Civ Holograms
+
+@persist HolosSpawned HoloAvailableIndexes:array HoloGrouping HoloGroup:array
+
+#
+
+HolosSpawned = 100
+
+for(I=1,20) {
+    HolosSpawned+=1
+    HoloAvailableIndexes:pushNumber(HolosSpawned)
+}
+
+
+function number getHoloIndex() {
+    if(HoloAvailableIndexes:count() <= 20) {
+        HolosSpawned+=1
+        HoloAvailableIndexes:pushNumber(HolosSpawned)
+    }
+    
+    local Index = HoloAvailableIndexes[1,number]
+    HoloAvailableIndexes:shift()
+    
+    if(HoloGrouping) {
+        HoloGroup:pushNumber(Index)
+    }
+    
+    return Index
+}
+
+function deleteHolo(Index) {
+    holoDelete(Index)
+    HoloAvailableIndexes:pushNumber(Index)
+}
+
+#
+
+function startHoloGroup() {
+    HoloGrouping = 1
+    
+    HoloGroup = array()
+}
+
+function array finishHoloGroup() {
+    HoloGrouping = 0
+    
+    #[local Group = HoloGroup:clone()
+ 
+    HoloGroup:clear()
+   
+    return Group]#
+    return HoloGroup
+}

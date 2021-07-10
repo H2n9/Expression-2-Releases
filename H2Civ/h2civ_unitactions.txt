@@ -1,0 +1,196 @@
+@name H2Civ UnitActions
+@inputs 
+@outputs 
+@persist UnitActions:table
+@trigger 
+
+UnitActions = table()
+
+UnitActions["BuildCity", table] = table("Name"="Build City", "actionFunction"="buildCityAction")
+
+UnitActions["BuildImprovement", table] = table("Name"="Build Improvement", "actionFunction"="buildImprovementAction")
+UnitActions["BuildMilitaryImprovement", table] = table("Name"="Build Military Improvement", "actionFunction"="buildMilitaryImprovementAction")
+
+#
+
+function buildCityAction(Unit:table) {
+    local City = spawnStructure("City", Unit["ClientIndex",number], Unit:getPos())
+    
+    if(City:count() <= 0) { 
+        Unit["ParentHolo",entity]:soundPlay(2,1, "ui/chat_display_text.wav")
+        return
+    }
+    
+    City["ParentEnt",entity]:soundPlay(1,2, "ui/armsrace_become_leader_team.wav")
+    soundPitch(1, 140 + random(-10, 10))
+    City["ParentEnt",entity]:soundPlay(2,1.5, "Boulder.ImpactHard")
+    soundPitch(2, 220 + random(-20, 10))
+    City["ParentEnt",entity]:soundPlay(3,1.5, "vehicles/airboat/pontoon_impact_hard1.wav")
+    
+    Unit:deleteUnit()
+}
+
+function number tryBuildImprovement(Unit:table) {
+    local Cell = Unit:getPos()
+    
+    if(Structures:exists(cellCoordsToIndex(Cell))) { return 0 }
+    
+    if(structureInRange(Cell, "Ruins", 1)) {
+        local Ruins = Structures[cellCoordsToIndex(getStructurePosInRange(Cell, "Ruins", 1)), table]
+        
+        if(Ruins["Claimed", number]) { return 0 }
+        
+        local Outpost = spawnStructure("Outpost", Unit["ClientIndex",number], Unit:getPos())
+        
+        if(Outpost:count() <= 0) {
+            return 0
+        }
+        
+        Ruins["Claimed", number] = 1
+        Outpost["TargetCell", vector2] = Ruins:getPos()
+        
+        Outpost["ParentEnt",entity]:soundPlay(2,1.5, "Boulder.ImpactHard")
+        soundPitch(2, 220 + random(-20, 10))
+        soundVolume(2, 0.7)
+        
+        "invokeCellChanged"(Cell)
+        
+        return 1
+    }
+    
+    if(Features:exists(cellCoordsToIndex(Cell))) {
+        if(Features[cellCoordsToIndex(Cell),table]["Name",string]:find("Forest")) {
+            local Sawmill = spawnStructure("Sawmill", Unit["ClientIndex",number], Unit:getPos())
+        
+            if(Sawmill:count() <= 0) {
+                return 0
+            } 
+            
+            Sawmill["ParentEnt",entity]:soundPlay(2,1.5, "Boulder.ImpactHard")
+            soundPitch(2, 220 + random(-20, 10))
+            soundVolume(2, 0.7)
+            
+            return 1
+        }
+    }
+    
+    local Tile = Tiles[cellCoordsToIndex(Cell), table]
+    
+    switch(Tile["Name",string]) {
+        case "Plains",
+        if(Features:exists(cellCoordsToIndex(Cell))) {
+            return 0
+        }
+        
+        local Farm = spawnStructure("Farm", Unit["ClientIndex",number], Unit:getPos())
+        
+        if(Farm:count() <= 0) {
+            return 0
+        } 
+        
+        Farm["ParentEnt",entity]:soundPlay(2,1.5, "Boulder.ImpactHard")
+        soundPitch(2, 220 + random(-20, 10))
+        soundVolume(2, 0.7)
+        
+        return 1
+        break
+        
+        default,
+        break
+    }
+    
+    "invokeCellChanged"(Cell)
+    
+    return 0
+}
+
+function buildImprovementAction(Unit:table) {
+    if(!tryBuildImprovement(Unit)) {
+        Unit["ParentHolo",entity]:soundPlay(2,1, "ui/chat_display_text.wav")
+        return
+    }
+    
+    Unit["Charges",number] = Unit["Charges",number] - 1
+    Unit["Movement",number] = 0
+    
+    if(Unit["Charges",number] <= 0) {
+        Unit:deleteUnit()
+    }
+}
+
+function number tryBuildMilitaryImprovement(Unit:table) {
+    local Cell = Unit:getPos()
+    
+    if(Structures:exists(cellCoordsToIndex(Cell))) {
+        local Structure = Structures[cellCoordsToIndex(Cell), table]
+        
+        if(Structure["Name",string] == "Nest") {
+            if((Unit["ClientIndex",number]:getModifier("CanClearNest")-1)) {
+                deleteStructure(Structure)
+                
+                local Client = Shared["Client"+Unit["ClientIndex",number], table]
+                
+                Client["Scrap",number] = Client["Scrap",number] + 40
+                
+                Unit["ClientIndex",number]:alienNestNotification(40)
+                
+                return 1
+            }
+        }
+        
+        if(Structure["Name",string] == "City") {
+            if(Structure["HasCitadel",number]) {
+                
+                Structure["CitadelProgress",number] = Structure["CitadelProgress",number] + 1
+                holoAlpha(Structure["CitadelHolos", array][2,number], clamp((255/CITADEL_CHARGES_REQUIRED) * Structure["CitadelProgress",number],0,255))
+                
+                Structure["ParentEnt",entity]:soundPlay(2, 2.8, "ambient/machines/thumper_startup1.wav")
+                soundPitch(2, 80 + (40/CITADEL_CHARGES_REQUIRED)*Structure["CitadelProgress",number])
+                return 1
+            }
+        }
+        
+        return 0
+    }
+    
+    if(Features:exists(cellCoordsToIndex(Cell))) { return 0 }
+    
+    local Fort = spawnStructure("Combine_Fort", Unit["ClientIndex",number], Unit:getPos())
+        
+    if(Fort:count() <= 0) {
+        return 0
+    } 
+        
+    Fort["ParentEnt",entity]:soundPlay(2,1.5, "Boulder.ImpactHard")
+    soundPitch(2, 220 + random(-20, 10))
+    soundVolume(2, 0.7)
+        
+    return 1
+}
+
+function buildMilitaryImprovementAction(Unit:table) {
+    if(!tryBuildMilitaryImprovement(Unit)) {
+        Unit["ParentHolo",entity]:soundPlay(2,1, "ui/chat_display_text.wav")
+        return
+    }
+    
+    Unit["Charges",number] = Unit["Charges",number] - 1
+    Unit["Movement",number] = 0
+    
+    if(Unit["Charges",number] <= 0) {
+        Unit:deleteUnit()
+    }
+}
+
+function fortifyAction(Unit:table) {
+    if(Unit["Movement",number] > 0) { return }
+    Unit["Fortified", number] = 1
+}
+
+function triggerUnitAction(Unit:table, Type:string) {
+    if(!UnitActions:exists(Type)) { return }
+    
+    local Action = UnitActions[Type,table]
+    
+    Action["actionFunction", string](Unit)   
+}

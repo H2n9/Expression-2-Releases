@@ -1,0 +1,205 @@
+@name H2CivClient Core
+@inputs 
+@outputs 
+@persist CurrentSelection:table CurrentHover:table CurrentGraph:table LastPos:vector2 Pathing
+@trigger 
+
+listen("SelectionChanged", "onSelectionChanged")
+listen("CellChanged", "updateSelectionCellChanged")
+
+function setGraphCallback(Graph:table) {
+    CurrentGraph = Graph
+}
+
+function showPathCallback(Path:array) {
+    local MoveLeft = CurrentSelection["Movement",number]
+    
+    for(I=1,5) {
+        if(I <= Path:count()-1) {
+            local Coord = Path[Path:count()-(I),vector2]
+            local CellIndex = cellCoordsToIndex(Coord)
+            
+            local Required = CurrentSelection:getMovementCost(Coord)
+            
+            if(Required < 0) {
+                MoveLeft = -1
+            } else {
+                MoveLeft -= Required
+            }
+            
+            if(MoveLeft >= 0) {
+                holoColor(5+I, vec(255))
+            } else {
+                holoColor(5+I, vec(255,180,150))
+            }
+            
+            holoAlpha(5+I, 160) 
+            holoPos(5+I, Tiles[CellIndex,table]:getTileTop())
+        } else {
+            holoAlpha(5+I, 0) 
+        }
+    }
+    
+    Pathing = 0
+}
+
+function updateSelectionCellChanged(Params:table) {
+    local SelectionPos = CurrentSelection:getPos()
+    
+    if(cellDistance(SelectionPos, Params["Pos",vector2]) <= 1) {
+        if(CurrentSelection["Movement", number] == 0) {
+            CurrentSelection = table()
+        }
+        trigger("SelectionChanged", table())
+    }
+}
+
+function getSelection(Vec2:vector2) {
+    local Index = cellCoordsToIndex(Vec2)
+    if(Units:exists(Index)) {
+        if(Units[Index, table]["ClientIndex",number] == ClientIndex) {
+            CurrentSelection = Units[Index, table]
+            
+            holoPos(2, Tiles[cellCoordsToIndex( vec2( CurrentSelection["X", number], CurrentSelection["Y", number] ) ), table]:getTileTop())
+            
+            #awaitComputeGraph(Vec2, vec2(), CurrentSelection["MoveType",string], "setGraphCallback")
+            
+            trigger("SelectionChanged", table())
+        }
+    }
+}
+
+function moveSelection(TargetVec2:vector2) {
+    local CurrentPos = CurrentSelection:getPos()
+    if(cellDistance(CurrentPos,TargetVec2) > 1) { 
+        CurrentSelection = table()
+        trigger("SelectionChanged", table())
+    }
+    dsSendDirect("MoveUnit", ParentE2, table("Pos"=TargetVec2, "Unit"=CurrentSelection))
+    #awaitComputeGraph(TargetVec2, vec2(), CurrentSelection["MoveType",string], "setGraphCallback")
+}
+
+function attackTarget(Vec2:vector2) {
+    if(cellDistance(CurrentSelection:getPos(),Vec2) > 1) { return }
+    
+    local TargetUnit = Units[cellCoordsToIndex(Vec2), table]
+    
+    dsSendDirect("AttackUnit", ParentE2, table("Source"=CurrentSelection, "Target"=TargetUnit))
+}
+
+function attackStructure(Structure:table) {
+    if(cellDistance(CurrentSelection:getPos(),Structure:getPos()) > 1) { return }
+    
+    dsSendDirect("AttackStructure", ParentE2, table("Source"=CurrentSelection, "Target"=Structure))
+}
+
+function doUnitAction(Vec2:vector2) {
+    if(Vec2 == CurrentSelection:getPos()) { return }
+    
+    local CellIndex = cellCoordsToIndex(Vec2)
+    
+    if(Structures:exists(CellIndex)) {
+        local Structure = Structures[CellIndex,table]
+        
+        if(Structure:exists("Health") && Structure["ClientIndex",number] != ClientIndex) {
+            attackStructure(Structure)
+            return
+        }
+    }
+    if(!Units:exists(CellIndex)) {
+        moveSelection(Vec2)
+    } else {
+        attackTarget(Vec2)
+    }
+    
+    if(CurrentSelection["Movement", number] == 0) {
+        CurrentSelection = table()
+        
+        trigger("SelectionChanged", table())
+    }
+} 
+
+function onRightClick() {
+    if(CurrentSelection:count() <= 0) { getSelection(worldToCellCoords(Player:aimPos())) }
+    else {
+        doUnitAction(worldToCellCoords(Player:aimPos()))
+    }
+}
+
+function onSelectionChanged(Params:table) {
+    if(CurrentSelection:count() > 0)  {
+        local Neighbours = getNeighbourCoords(vec2( CurrentSelection["X", number], CurrentSelection["Y", number] ))
+        
+        #[for(I=1,6) {
+            local CellIndex = cellCoordsToIndex(Neighbours[I,vector2])
+            
+            holoPos(5+I, Tiles[CellIndex,table]:getTileTop())
+            
+            if(CurrentSelection:getMovementCost(Neighbours[I,vector2]) == -1) { holoColor(5+I, vec(),0) continue}
+            
+            if(Units:exists(CellIndex)) {
+                if(Units[CellIndex, table]["ClientIndex", number] == ClientIndex) {
+                    continue
+                } else {
+                    holoColor(5+I, vec(180,90,90), 130)
+                    continue
+                }
+            }
+            
+            holoColor(5+I, vec(100), 130)
+        }]#
+    } else {
+        CurrentSelection = table()
+        for(I=1,5) {
+            holoAlpha(5+I, 0)
+        }
+    }
+}
+
+function updateForPlayer() {
+    #timer("repath", 300)
+    
+    if(Player:weapon():type() != "weapon_crowbar") { return }
+    #if(Player:aimEntity() != MapBase) { return }
+    
+    holoPos(1, Tiles[cellCoordsToIndex(worldToCellCoords(Player:aimPos())),table]:getTileTop())
+    
+    if(Player:keyUse() && changed(Player:keyUse())) {
+        dsSendDirect("DevSpawnUnit", ParentE2, table("Pos"=worldToCellCoords(Player:aimPos()), "ClientIndex"=ClientIndex))
+    }
+    
+    if(Player:keyReload() && changed(Player:keyReload())) {
+        dsSendDirect("DevSpawnStructure", ParentE2, table("Pos"=worldToCellCoords(Player:aimPos()), "ClientIndex"=ClientIndex))
+    }
+    
+    if(Player:keyAttack2() && changed(Player:keyAttack2())) {
+        onRightClick()
+    }
+    
+    if(Player:keyPressed("0") && changed(Player:keyPressed("0"))) {
+        dsSendDirect("UnitSpecialAction", ParentE2, table("Unit"=CurrentSelection, "Type"=CurrentSelection["specialAction",string]))
+    }
+    
+    if(Player:keyPressed("8") && changed(Player:keyPressed("8"))) {
+        Shared["Client"+ClientIndex, table]["EndTurn", number] = 1
+        holoAlpha(3, 255)
+        EGP:entity():soundPlay(2,1,"ui/hint.wav")
+    }
+    
+    if(CurrentSelection:count() > 0)  {
+        holoPos(2, Tiles[cellCoordsToIndex( vec2( CurrentSelection["X", number], CurrentSelection["Y", number] ) ), table]:getTileTop())
+        
+            local Pos = worldToCellCoords(Player:aimPos())
+            
+            if(LastPos != Pos & !Pathing) {
+                awaitComputePath(vec2( CurrentSelection["X", number], CurrentSelection["Y", number] ), Pos, CurrentGraph, "showPathCallback")
+                Pathing = 1
+            }
+    } else {
+        holoPos(2, vec())
+    }
+    
+    trigger("PlayerUpdate", table())
+    
+    LastPos = worldToCellCoords(Player:aimPos())
+}

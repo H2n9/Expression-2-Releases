@@ -1,0 +1,287 @@
+@name H2CivShared Units
+@inputs 
+@outputs 
+@persist UnitTypes:table MovementTable:table
+@persist ATTACKER_RESULT_KEYS:array DEFENDER_RESULT_KEYS:array
+@trigger 
+
+UnitTypes = table()
+
+# Rebel #
+
+UnitTypes["Rebel_Settler", table] = table("Name"="Settler", "customDrawFunc"="drawRebelSettlersUnit", "Actors"=5, "HolosPerActor"=1, "MoveSound"="Snow.StepRight",
+                                       "MaxMovement"=2, "Type"="Melee", "Strength"=1, "specialAction"="BuildCity")
+                                
+UnitTypes["Rebel_Builder", table] = table("Name"="Builder", "customDrawFunc"="drawRebelSettlersUnit", "Actors"=5, "HolosPerActor"=1, "MoveSound"="Snow.StepRight",
+                                       "MaxMovement"=2, "Type"="Melee", "Strength"=1, "specialAction"="BuildImprovement", "Charges"=2)
+                                    
+UnitTypes["Rebel_MilitaryEngineer", table] = table("Name"="Military Engineer", "customDrawFunc"="drawRebelSettlersUnit", "Actors"=5, "HolosPerActor"=1, "MoveSound"="Snow.StepRight",
+                                       "MaxMovement"=2, "Type"="Melee", "Strength"=1, "specialAction"="BuildMilitaryImprovement", "Charges"=1)
+                                                                                                                                    
+
+UnitTypes["Rebel_Scouts", table] = table("Name"="Rebel Scouts", "customDrawFunc"="drawRebelScoutsUnit", "Actors"=3, "HolosPerActor"=2, "MoveSound"="Snow.StepRight",
+                                       "MaxMovement"=3, "Type"="Melee", "Strength"=18, "IsCombat"=1)
+
+UnitTypes["Rebel_Soldiers", table] = table("Name"="Rebel Soldiers", "customDrawFunc"="drawRebelSoldiersUnit", "Actors"=3, "HolosPerActor"=2, "MoveSound"="Snow.StepRight",
+                                       "MaxMovement"=2, "Type"="Melee", "Strength"=25, "IsCombat"=1)
+
+UnitTypes["Rebel_Shocktroopers", table] = table("Name"="Rebel Shocktroopers", "customDrawFunc"="drawRebelShockTroopers", "Actors"=3, "HolosPerActor"=2, "MoveSound"="Snow.StepRight",
+                                       "MaxMovement"=2, "Type"="Melee", "Strength"=30, "IsCombat"=1, "CombatType"="AntiArmor")
+
+UnitTypes["Rebel_JeepSquad", table] = table("Name"="Rebel Jeep Squad", "customDrawFunc"="drawJeepSquadUnit", "Actors"=2, "HolosPerActor"=2, "MoveSound"="vehicles/v8/skid_lowfriction.wav",
+                                       "MaxMovement"=4, "Type"="Melee", "Strength"=38, "IsCombat"=1, "CombatType"="Armor")
+
+UnitTypes["Rebel_AirboatSquad", table] = table("Name"="Rebel Airboat Squad", "customDrawFunc"="drawAirboatSquadUnit", "Actors"=2, "HolosPerActor"=2, "MoveSound"="vehicles/airboat/fan_motor_shut_off1.wav",
+                                       "MaxMovement"=3, "Type"="Melee", "Strength"=35, "IsCombat"=1, "MoveType"="LandAmph", "CombatType"="Armor")
+
+
+# Combine #
+
+UnitTypes["Combine_Settler", table] = table("Name"="Settler", "customDrawFunc"="drawCombineSettlersUnit", "Actors"=5, "HolosPerActor"=1, "MoveSound"="Snow.StepRight",
+                                       "MaxMovement"=2, "Type"="Melee", "Strength"=1, "specialAction"="BuildCity")
+
+UnitTypes["Combine_Builder", table] = table("Name"="Builder", "customDrawFunc"="drawCombineSettlersUnit", "Actors"=5, "HolosPerActor"=1, "MoveSound"="Snow.StepRight",
+                                       "MaxMovement"=2, "Type"="Melee", "Strength"=1, "specialAction"="BuildImprovement", "Charges"=2)
+
+UnitTypes["Combine_MilitaryEngineer", table] = table("Name"="Military Engineer", "customDrawFunc"="drawCombineSettlersUnit", "Actors"=5, "HolosPerActor"=1, "MoveSound"="Snow.StepRight",
+                                       "MaxMovement"=2, "Type"="Melee", "Strength"=1, "specialAction"="BuildMilitaryImprovement", "Charges"=1)  
+
+UnitTypes["Combine_Scouts", table] = table("Name"="Combine Scouts", "customDrawFunc"="drawCombineScoutsUnit", "Actors"=3, "HolosPerActor"=2, "MoveSound"="Snow.StepRight",
+                                    "AttackAnimation"="CombineScoutAttack",
+                                       "MaxMovement"=3, "Type"="Melee", "Strength"=18, "IsCombat"=1)
+
+UnitTypes["Combine_Soldiers", table] = table("Name"="Combine Soldiers", "customDrawFunc"="drawCombineSoldiersUnit", "Actors"=3, "HolosPerActor"=2, "MoveSound"="Snow.StepRight",
+                                        "AttackAnimation"="CombineSoldierAttack", "DefendAnimation"="CombineSoldierDefend",
+                                       "MaxMovement"=2, "Type"="Melee", "Strength"=25, "IsCombat"=1)
+
+UnitTypes["Combine_Elites", table] = table("Name"="Combine Elites", "customDrawFunc"="drawCombineElitesUnit", "Actors"=3, "HolosPerActor"=2, "MoveSound"="Snow.StepRight",
+                                       "MaxMovement"=2, "Type"="Melee", "Strength"=32, "IsCombat"=1)
+
+
+UnitTypes["Combine_Strider", table] = table("Name"="Combine Strider", "customDrawFunc"="drawCombineStriderUnit", "Actors"=1, "HolosPerActor"=1, "MoveSound"="NPC_Strider.Footstep",
+                                        "AttackAnimation"="StriderAttack",
+                                       "MaxMovement"=3, "Type"="Melee", "Strength"=40, "IsCombat"=1, "CombatType"="Armor")
+
+UnitTypes["Combine_Helicopter", table] = table("Name"="Combine Helicopter", "customDrawFunc"="drawCombineHelicopterUnit", "Actors"=1, "HolosPerActor"=1, "MoveSound"="npc/attack_helicopter/aheli_charge_up.wav",
+                                       "MaxMovement"=4, "Type"="Melee", "Strength"=34, "IsCombat"=1, "MoveType"="AirNormal", "CombatType"="AntiArmor")
+
+#
+
+UnitTypes["Embarked", table] = table("Name"="Embarked Unit", "customDrawFunc"="drawEmbarked", "Actors"=1, "HolosPerActor"=1, "MoveSound"="vehicles/airboat/pontoon_splash2.wav",
+                                       "MaxMovement"=3, "Type"="Melee", "Strength"=8, "IsCombat"=0, "MoveType"="SeaNormal")
+
+
+#
+
+UnitTypes["Antlions", table] = table("Name"="Antlions", "customDrawFunc"="drawAntlionGroupUnit", "Actors"=5, "HolosPerActor"=1, "MoveSound"="NPC_Antlion.Idle",
+                                    "AttackAnimation"="AntlionAttack",  "DefendAnimation"="AntlionAttack",
+                                       "MaxMovement"=2, "Type"="Melee", "Strength"=18, "IsCombat"=1, "MoveType"="LandNormal")
+
+
+#
+
+
+MovementTable = table()
+
+# -1 = cannot move to
+MovementTable["LandNormal", table] = table("Ocean"=-1, "Coast"=-1, "Mountain"=-1, "Ice"=-1, "PlainsHills"=2, "SnowHills"=2, "DesertHills"=2, "Forest"=2, "SnowForest"=2)
+MovementTable["LandAmph", table] = table("Mountain"=-1, "Ice"=-1, "PlainsHills"=2, "SnowHills"=2, "DesertHills"=2, "Forest"=2, "SnowForest"=2)
+
+MovementTable["SeaNormal", table] = table("Beach"=-1, "Plains"=-1, "Snow"=-1, "Wasteland"=-1, "Desert"=-1, "Mountain"=-1, "Ice"=-1)
+
+MovementTable["AirNormal", table] = table("Ocean"=2, "Coast"=2, "Ice"=2, "Mountain"=-1)
+
+#
+
+ATTACKER_RESULT_KEYS = array("HealthMult", "AdjacentMult", "InfantryVsArmor", "AntiArmorVsArmor", "FortBonus")
+DEFENDER_RESULT_KEYS = array("HealthMult", "AdjacentMult", "FortifiedBonus", "RoughBonus", "InfantryVsArmor", "AntiArmorVsArmor", "FortBonus")
+
+#
+
+
+# returns -1 if cannot move
+function number table:getMovementCost(TargetPos:vector2) {
+    local TargetCellIndex = cellCoordsToIndex(TargetPos)
+    
+    local MoveTable = MovementTable[This["MoveType",string], table]
+    
+    #temp
+    if(MoveTable[Tiles[TargetCellIndex,table]["Name", string], number] == -1) {
+        return -1
+    }
+    
+    #[if(Borders:exists(TargetCellIndex)) {
+        if(Borders[TargetCellIndex, table]["ClientIndex", number] != This["ClientIndex", number]) {
+            return -1
+        }
+    }]#
+    
+    local RoadMult = 1
+    if(Roads:exists(TargetCellIndex) & This["MoveType",string]:find("Land") & This["ClientIndex", number] > 0) { RoadMult = 0.5 }
+    
+    return max(MoveTable[Tiles[TargetCellIndex,table]["Name", string], number],1) * (RoadMult)
+}
+
+function array table:getAttackCells() {
+    local Neighbours = getNeighbourCoords(This:getPos()) 
+    local AttackTiles = array()
+    
+    for(I=1,Neighbours:count()) {
+        local Cell = Neighbours[I,vector2]
+        local CellIndex = cellCoordsToIndex(Cell)
+        
+        if(Units:exists(CellIndex)) {
+            if(Units[CellIndex,table]["ClientIndex",number] == This["ClientIndex",number]) {
+                continue
+            }
+        } else {
+            continue
+        }
+        
+        AttackTiles:pushVector2(Cell)
+    }
+    
+    return AttackTiles
+}
+
+function array table:getMoveCells() {
+    local Neighbours = getNeighbourCoords(This:getPos()) 
+    local MoveTiles = array()
+    
+    for(I=1,Neighbours:count()) {
+        local Cell = Neighbours[I,vector2]
+        local CellIndex = cellCoordsToIndex(Cell)
+        
+        if(Units:exists(CellIndex)) {
+            continue
+        }
+        if(This:getMovementCost(Cell) == -1) {
+            continue
+        }
+        
+        MoveTiles:pushVector2(Cell)
+    }
+    
+    return MoveTiles
+}
+
+function number table:isFriendlyCombatUnitAdjacent() {
+    local Neighbours = getNeighbourCoords(This:getPos())
+    
+    local Count = 0
+    for(I=1,Neighbours:count()) {
+        local Cell = cellCoordsToIndex(Neighbours[I,vector2])
+        if(Units:exists(Cell)) {
+            local Unit = Units[Cell,table]
+            
+            if(Unit["IsCombat",number] == 1 && Unit["ClientIndex", number] == This["ClientIndex",number]) {
+                Count += 1
+            }
+        }
+    }
+    
+    return Count
+}
+
+function table table:getAttackerStrength(Other:table) {
+    local ResultTable = table()
+    local Strength = This["Strength",number]
+    
+    # Attacker Health multiplier
+    local HealthMult = (1-0.005*(100-This["Health",number]))
+    ResultTable["HealthMult", number] = HealthMult
+    Strength *= HealthMult
+    
+    # Adjacent unit multiplier
+    local AdjacentMult = 1 + (0.1*This:isFriendlyCombatUnitAdjacent()*Other["ClientIndex",number]:getModifier("NegateEnemyAdjacency"))
+    ResultTable["AdjacentMult", number] = AdjacentMult
+    Strength *= AdjacentMult
+    
+    # Infantry vs Armor
+    local InfArmorMult = 1
+    if( This["CombatType",string] == "Infantry" && Other["CombatType",string] == "Armor") {
+        InfArmorMult = 0.8
+    }
+    ResultTable["InfantryVsArmor", number] = InfArmorMult
+    Strength *= InfArmorMult
+    
+    # AntiArmor vs Armor
+    local AntiArmorMult = 1
+    if( This["CombatType",string] == "AntiArmor" && Other["CombatType",string] == "Armor") {
+        AntiArmorMult = 1.2
+    }
+    ResultTable["AntiArmorVsArmor", number] = AntiArmorMult
+    Strength *= AntiArmorMult
+    
+    # Fort structure bonus
+    local FortBonus = 1
+    if(Structures:exists(cellCoordsToIndex(This:getPos()))) {
+        if(Structures[cellCoordsToIndex(This:getPos()),table]["Name",string]:find("Fort")) { 
+            FortBonus = 1.3
+        }
+    }
+    ResultTable["FortBonus", number] = FortBonus
+    Strength *= FortBonus
+    
+    ResultTable["Strength",number] = Strength
+    
+    return ResultTable
+}
+
+function table table:getDefenderStrength(Other:table) {
+    local ResultTable = table()
+    local Strength = This["Strength",number]
+    
+    # Defender Health multiplier
+    local HealthMult = (1-0.005*(100-This["Health",number]))
+    ResultTable["HealthMult", number] = HealthMult
+    Strength *= HealthMult
+    
+    # Adjacent unit multiplier
+    local AdjacentMult = 1 + (0.1*This:isFriendlyCombatUnitAdjacent()*Other["ClientIndex",number]:getModifier("NegateEnemyAdjacency"))
+    ResultTable["AdjacentMult", number] = AdjacentMult
+    Strength *= AdjacentMult
+    
+    # Fortified
+    local FortifiedBonus = (1 + 0.3*This["Fortified",number])
+    ResultTable["FortifiedBonus", number] = FortifiedBonus
+    Strength *= FortifiedBonus
+    
+    # Rough
+    local CellIndex = cellCoordsToIndex(vec2(This["X", number], This["Y", number]))
+    local RoughBonus = (1 + 0.2 * max(Features[CellIndex,table]["Rough", number], Tiles[CellIndex,table]["Rough", number]))
+    ResultTable["RoughBonus", number] = RoughBonus
+    Strength *= RoughBonus
+    
+    # Infantry vs Armor
+    local InfArmorMult = 1
+    if( This["CombatType",string] == "Infantry" && Other["CombatType",string] == "Armor") {
+        InfArmorMult = 0.8
+    }
+    ResultTable["InfantryVsArmor", number] = InfArmorMult
+    Strength *= InfArmorMult
+    
+    # AntiArmor vs Armor
+    local AntiArmorMult = 1
+    if( This["CombatType",string] == "AntiArmor" && Other["CombatType",string] == "Armor") {
+        AntiArmorMult = 1.2
+    }
+    ResultTable["AntiArmorVsArmor", number] = AntiArmorMult
+    Strength *= AntiArmorMult
+    
+    # Fort structure bonus
+    local FortBonus = 1
+    if(Structures:exists(cellCoordsToIndex(This:getPos()))) {
+        if(Structures[cellCoordsToIndex(This:getPos()),table]["Name",string]:find("Fort")) { 
+            FortBonus = 1.3
+        }
+    }
+    ResultTable["FortBonus", number] = FortBonus
+    Strength *= FortBonus
+    
+    #
+    
+    ResultTable["Strength",number] = Strength
+    
+    return ResultTable
+}

@@ -1,0 +1,699 @@
+@name H2Civ Structures
+@inputs 
+@outputs 
+@persist Structures:table StructureTypes:table Borders:table GlobalYields:table
+@trigger 
+
+StructureTypes = table()
+
+StructureTypes["City",table] = table("Name"="City", "customDrawFunc"="buildCityStructure", "Health"=100)
+StructureTypes["Farm",table] = table("Name"="Farm", "customDrawFunc"="buildFarmStructure")
+StructureTypes["Sawmill",table] = table("Name"="Sawmill", "customDrawFunc"="buildSawmillStructure")
+StructureTypes["Outpost",table] = table("Name"="Outpost", "customDrawFunc"="buildOutpostStructure", "Health"=100)
+StructureTypes["Ruins",table] = table("Name"="Ruins", "customDrawFunc"="buildRuinsStructure", "Variants"=table("Snow"="buildRuinsStructureSnow", "Coast"="buildRuinsStructureDocks"))
+StructureTypes["Refugees",table] = table("Name"="Refugees", "customDrawFunc"="buildRefugeeStructure")
+StructureTypes["Nest",table] = table("Name"="Nest", "customDrawFunc"="buildNestStructure")
+
+StructureTypes["Combine_Fort", table] = table("Name"="Fort", "customDrawFunc"="buildCombineFortStructure")
+
+# docks
+
+Structures = table()
+
+Shared["Structures",table] = Structures
+
+#
+
+Borders = table()
+
+Shared["Borders",table] = Borders
+
+#
+
+GlobalYields = table()
+
+GlobalYields["Plains", table] = table("Food"=1)
+GlobalYields["PlainsHills", table] = table("Food"=1, "Production"=1)
+
+GlobalYields["SnowHills", table] = table("Production"=1)
+GlobalYields["DesertHills", table] = table("Production"=1)
+
+GlobalYields["Mountain", table] = table("Production"=1)
+
+GlobalYields["Coast", table] = table("Food"=1)
+
+GlobalYields["Forest", table] = table("Food"=1, "Scrap"=1, "Production"=1)
+GlobalYields["SnowForest", table] = table("Food"=1, "Scrap"=1, "Production"=1)
+GlobalYields["Resource", table] = table("Scrap"=2, "Production"=1)
+
+GlobalYields["DeadForest", table] = table("Scrap"=1, "Production"=1)
+
+GlobalYields["Farm", table] = table("Food"=1)
+GlobalYields["Sawmill", table] = table("Scrap"=1)
+#
+
+# this is more like a sub structure and will appear above a city
+function table:buildCitadelStructure(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(0,0,6.15)*Scale, Scale*vec(0.002,0.002,0.0015), Ang+ang(0,random(-90,90),0))
+    holoModel(I, "models/props_combine/combine_citadel001.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(0,0,0.5)*Scale, Scale*vec(0.2,0.2,0.2), Ang+ang(-90,random(-90,90),0))
+    holoAlpha(I, 0)
+    holoModel(I, "models/props_combine/portalball.mdl")
+    holoDisableShading(I, 0)
+    holoParent(I, Parent)
+}
+
+#
+
+function table:buildCityStructure(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos-vec(0.5,0.5,0)*Scale, Scale*0.04, Ang)
+    holoModel(I, "models/props_buildings/row_corner_1.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(0.5,0.5,0)*Scale, Scale*0.04, Ang+ang(0,90,0))
+    holoModel(I, "models/props_buildings/row_corner_2.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos, Scale:setZ(0.01)*0.95, Ang)
+    holoModel(I, "models/holograms/hexagon.mdl")
+    holoMaterial(I, "models/props_debris/concretefloor013a")
+    holoParent(I, Parent)
+    
+    #holoAng(Parent, ang(0,random(-180,180),0))
+}
+
+function table:buildOutpostStructure(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos-vec(2.5,2,0)*Scale, Scale*0.025, Ang+ang(0,30,0))
+    holoModel(I, "models/props_c17/concrete_barrier001a.mdl")
+    holoParent(I, Parent)
+        
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(0,0,1.6)*Scale, Scale*0.02, Ang+ang(0,30,0))
+    holoModel(I, "models/props_moonbase/radar_outpost01.mdl")
+    holoParent(I, Parent)
+        
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(2,2.5,0)*Scale, Scale*0.03, Ang+ang(0,30,0))
+    holoModel(I, "models/props/de_dust/hr_dust/dust_crates/dust_crate_style_01_37x37x74.mdl")
+    holoParent(I, Parent)
+        
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(2,-2.5,0.8)*Scale, Scale*0.03, Ang+ang(0,30,0))
+    holoModel(I, "models/props_vehicles/car001a_hatchback.mdl")
+    holoParent(I, Parent)
+        
+    holoAng(Parent, ang(0,random(-180,180),0))
+}
+
+function table:buildFarmStructure(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos-vec(1.75,1.75,0)*Scale, Scale*0.06, Ang+ang(0,-30,0))
+    holoModel(I, "models/props/de_nuke/hr_nuke/nuke_skybox_buildings/nuke_skybox_warehouse01.mdl")
+    holoParent(I, Parent)
+        
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-1.5,0,0.23)*Scale, Scale*0.03, Ang+ang(0,-30,0))
+    holoModel(I, "models/props/de_inferno/hr_i/hay_bale/hay_bale_a.mdl")
+    holoParent(I, Parent)
+        
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(2,0,0.06)*Scale, Scale*0.005, Ang+ang(0,random(-25,35),0))
+    holoModel(I, "models/props_vehicles/tractor01.mdl")
+    holoParent(I, Parent)
+        
+    holoAng(Parent, ang(0,random(-180,180),0))
+}
+
+
+function table:buildSawmillStructure(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(2,0,0.5)*Scale, Scale*0.008, Ang+ang(0,random(-25,35),0))
+    holoModel(I, "models/props_vehicles/truck001a.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-2,1,0.4)*Scale, Scale*0.008, Ang+ang(0,120+random(-25,35),0))
+    holoModel(I, "models/props_vehicles/trailer002a.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-1,2,0.08)*Scale, Scale*0.01, Ang+ang(0,40+random(-25,35),0))
+    holoModel(I, "models/props/cs_militia/logpile2.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-0.1,2.8,0.08)*Scale, Scale*0.009, Ang+ang(0,120+random(-25,35),0))
+    holoModel(I, "models/props/cs_militia/logpile2.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-1.1,-2.8,0.05)*Scale, Scale*0.007, Ang+ang(0,random(-90,90),0))
+    holoModel(I, "models/props_foliage/tree_stump01.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(2.9,-2.4,0.05)*Scale, Scale*0.007, Ang+ang(0,random(-90,90),0))
+    holoModel(I, "models/props_foliage/tree_stump01.mdl")
+    holoParent(I, Parent)
+    
+    holoAng(Parent, ang(0,random(-180,180),0))
+}
+
+function table:buildRuinsStructure(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos-vec(1.5,1,-1.4)*Scale, Scale*0.04, Ang+ang(0,-70,0))
+    holoModel(I, "models/props_buildings/destroyed_cityblock01d.mdl")
+    holoParent(I, Parent)
+        
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(1,1,2.1)*Scale, Scale*0.04, Ang+ang(0,120,0))
+    holoModel(I, "models/props_buildings/destroyed_cityblock01f.mdl")
+    holoParent(I, Parent)
+        
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-2.1,1.8,0.2)*Scale, Scale*0.01, Ang+ang(0,190,0))
+    holoModel(I, "models/props_debris/concrete_debris256pile001a.mdl")
+    holoParent(I, Parent)
+        
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(2.6,1.8,0.2)*Scale, Scale*0.02, Ang+ang(0,190,0))
+    holoModel(I, "models/props_debris/concrete_debris128pile001b.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos, Scale:setZ(0.01)*0.95, Ang)
+    holoModel(I, "models/holograms/hexagon.mdl")
+    holoColor(I, vec(230,255,235))
+    holoMaterial(I, "models/props_wasteland/dirtwall001a")
+    holoParent(I, Parent)
+
+    #holoAng(Parent, ang(0,random(-180,180),0))
+}
+
+function table:buildRuinsStructureSnow(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos-vec(1.1,0.5,-1.3)*Scale, Scale*0.04, Ang+ang(0,-110,0))
+    holoModel(I, "models/props_buildings/destroyed_cityblock01d.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(1.6,1.3,1)*Scale, Scale*0.04, Ang+ang(0,120,0))
+    holoModel(I, "models/props_buildings/destroyed_cityblock01h.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-0.4,-1.3,0.2)*Scale, Scale*0.01, Ang+ang(0,50,0))
+    holoModel(I, "models/props_debris/concrete_debris256pile001a.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(3.5,0.3,0.2)*Scale, Scale*0.02, Ang+ang(0,190,0))
+    holoModel(I, "models/props_debris/concrete_debris128pile001b.mdl")
+    holoParent(I, Parent)
+
+    local I = getHoloIndex()
+    holoCreate(I, Pos, Scale:setZ(0.01)*0.95, Ang)
+    holoModel(I, "models/holograms/hexagon.mdl")
+    holoMaterial(I, "models/props/cs_office/snowmana")
+    holoParent(I, Parent)
+    
+    #holoAng(Parent, ang(0,random(-180,180),0))
+}
+
+function table:buildRuinsStructureDocks(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-2.7,1.8,0.3)*Scale, Scale*vec(0.01,0.01,0.005), Ang+ang(0,0,0))
+    holoModel(I, "models/props_docks/dock_broken01a_256.mdl")
+    holoParent(I, Parent)
+    #holoAng(Parent, ang(0,random(-180,180),0))
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(1.6,1.8,0.3)*Scale, Scale*vec(0.01,0.01,0.005), Ang+ang(0,180,0))
+    holoModel(I, "models/props_docks/dock_broken01b_256.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-2.8,-0.4,0.3)*Scale, Scale*vec(0.1,0.1,0.03), Ang+ang(0,90,0))
+    holoModel(I, "models/hunter/blocks/cube075x1x075.mdl")
+    holoMaterial(I, "models/props_wasteland/concretefloor010a")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-0.9,-2.3,1.01)*Scale, Scale*vec(0.012,0.012,0.01), Ang)
+    holoModel(I, "models/props_docks/mooringbollard_01.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-3.5,-1.3,1.1)*Scale, Scale*vec(0.008,0.008,0.006), Ang)
+    holoModel(I, "models/Cranes/crane_frame.mdl")
+    holoColor(I, vec(170,205,245))
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-2.8,-0.8,1.1)*Scale, Scale*vec(0.02,0.02,0.01), Ang+ang(0,90,0))
+    holoModel(I, "models/props_debris/concrete_debris128pile001a.mdl")
+    holoParent(I, Parent)
+    
+    #[local I = getHoloIndex()
+    holoCreate(I, Pos+vec(1.0,-2.5,0.3)*Scale, Scale*vec(0.01,0.01,0.005), Ang+ang(0,-50,0))
+    holoModel(I, "models/props_docks/canal_dock02a.mdl")
+    holoParent(I, Parent)]#
+    
+    holoAng(Parent, This["SpecialAng",angle])
+}
+ 
+
+function table:buildRefugeeStructure(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos-vec(1.8,1,-0)*Scale, Scale*0.011, Ang+ang(0,-130,0))
+    holoModel(I, "models/props_misc/triage_tent.mdl")
+    holoParent(I, Parent)
+        
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(1.6,-2.5,0.9)*Scale, Scale*0.013, Ang+ang(0,-40,0))
+    holoModel(I, "models/props_debris/concrete_section128wall001c.mdl")
+    holoParent(I, Parent)
+        
+    #[local I = getHoloIndex()
+    holoCreate(I, Pos+vec(2.8,-1.0,0.9)*Scale, Scale*0.013, Ang+ang(0,-220,0))
+    holoModel(I, "models/props_debris/concrete_section128wall001b.mdl")
+    holoParent(I, Parent)]#
+
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(2.1,-1.8,0.2)*Scale, Scale*0.015, Ang+ang(0,190,0))
+    holoModel(I, "models/props_debris/concrete_debris128pile001b.mdl")
+    holoParent(I, Parent)
+        
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-1.1,2.8,0.4)*Scale, Scale*0.012, Ang+ang(0,190,0))
+    holoModel(I, "models/props_vehicles/van001a_physics.mdl")
+    holoParent(I, Parent)
+
+    local I = getHoloIndex()
+    holoCreate(I, Pos, Scale:setZ(0.01)*0.9, Ang)
+    holoModel(I, "models/holograms/hexagon.mdl")
+    holoColor(I, vec(230,255,235))
+    holoMaterial(I, "models/props_wasteland/dirtwall001a")
+    holoParent(I, Parent)
+
+    #holoAng(Parent, ang(0,random(-180,180),0))
+}
+
+function table:buildNestStructure(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-1.8,1,0)*Scale, Scale*vec(0.02, 0.02,0.001), Ang+ang(0,random(-180,180),0))
+    holoModel(I, "models/props_wasteland/antlionhill.mdl")
+    holoParent(I, Parent)
+
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(3,0,0)*Scale, Scale*vec(0.008, 0.008,0.003), Ang+ang(0,random(-25,35),0))
+    holoModel(I, "models/props_wasteland/antlionhill.mdl")
+    holoParent(I, Parent)
+
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(0.3,3,0.4)*Scale, Scale*vec(0.02, 0.02,0.02), Ang+ang(0,random(-90,90),0))
+    holoModel(I, "models/props_wasteland/rockgranite02c.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(1.5,3,1.2)*Scale, Scale*vec(0.02, 0.02,0.02), Ang+ang(0,random(-25,35),0))
+    holoModel(I, "models/props_wasteland/rockcliff01k.mdl")
+    holoParent(I, Parent)
+
+    local I = getHoloIndex()
+    holoCreate(I, Pos, Scale:setZ(0.01)*0.9, Ang)
+    holoModel(I, "models/holograms/hexagon.mdl")
+    holoMaterial(I, "models/props_wasteland/dirtwall001a")
+    holoParent(I, Parent)
+}
+
+function table:buildCombineFortStructure(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(3.8,1,0.35)*Scale, Scale*vec(0.011, 0.011,0.011), Ang+ang(0,10,0))
+    holoModel(I, "models/props_combine/combine_booth_med01a.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(2.6,2.8,0.35)*Scale, Scale*vec(0.011, 0.011,0.011), Ang+ang(0,20,0))
+    holoModel(I, "models/props_combine/combine_barricade_tall03a.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-3.8,1,0.35)*Scale, Scale*vec(0.011, 0.011,0.011), Ang+ang(0,-180,0))
+    holoModel(I, "models/props_combine/combine_booth_short01a.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-1.2,-3.6,0.35)*Scale, Scale*vec(0.011, 0.011,0.011), Ang+ang(0,-110,0))
+    holoModel(I, "models/props_combine/combine_booth_med01a.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-3.1,-2.55,0.8)*Scale, Scale*vec(0.032, 0.032,0.026), Ang+ang(0,-120,0))
+    holoModel(I, "models/props_combine/combine_barricade_short03a.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(-2.7,2.55,0.8)*Scale, Scale*vec(0.037, 0.037,0.028), Ang+ang(0,160,0))
+    holoModel(I, "models/props_combine/combine_barricade_short03a.mdl")
+    holoParent(I, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(2.1,-3,1.8)*Scale, Scale*vec(0.009, 0.009,0.0065), Ang+ang(0,-60,0))
+    holoModel(I, "models/props_combine/combinetower001.mdl")
+    holoParent(I, Parent)
+}
+
+function number spawnBorder(Structure:table, Pos:vector2) {
+    local In = getHoloIndex()
+    holoCreate(In, Tiles[cellCoordsToIndex(Pos),table]:getTileTop(), vec(GeneratorSettings["GridScale",number]*0.9):setZ(0.05))
+    holoColor(In, PLAYER_COLORS[Structure["ClientIndex",number], vector], 120)
+    holoDisableShading(In,1)
+    holoModel(In, "models/holograms/hexagon.mdl")
+    
+    return In
+}
+
+function createBorders(Structure:table, Range) {
+    local Cells = getCellsInRange(Structure:getPos(),Range)
+    for(I=1,Cells:count()) {
+        local Cell = Cells[I,vector2]
+        
+        if(Borders:exists(cellCoordsToIndex(Cell))) { continue }
+        
+        local HoloIndex = spawnBorder(Structure, Cell)
+         
+        Borders[cellCoordsToIndex(Cell), table] = table("X"=Cell:x(), "Y"=Cell:y(), "ClientIndex"=Structure["ClientIndex",number], "HoloIndex"=HoloIndex, "Parent"=Structure)
+    }
+}
+
+function initDrawStructure(Structure:table) {
+    local Tile = getTile(Structure:getPos())
+    local Pos = Tile:getTileTop()
+    
+    local Parent = getHoloIndex()
+    local ParentEnt = holoCreate(Parent, Pos, vec(0), ang())
+    
+    Structure["ParentHoloIndex", number] = Parent
+    Structure["ParentEnt", entity] = ParentEnt
+    
+    addSubprocess("drawStructureProcess", table("Structure"=cellCoordsToIndex(Tile:getPos())))
+}
+
+function finishDrawStructure(Structure:table) {
+    local Tile = getTile(Structure:getPos())
+    
+    local Variant = Structure["customDrawFunc", string]
+    if(Structure["Variants",table]:exists("Snow")) {
+        if(Tile["Name",string] == "Snow") { Variant = Structure["Variants",table]["Snow",string] }
+    }
+    if(Structure["Variants",table]:exists("Coast")) {
+        if(Tile["Name",string] == "Coast") { Variant = Structure["Variants",table]["Coast",string] }
+    }
+    
+    Structure["Variant", string] = Variant
+    
+    startHoloGroup()
+    
+    Variant(Structure, Structure["ParentHoloIndex", number], Structure["ParentEnt", entity]:pos(), ang(), vec(GeneratorSettings["GridScale",number]))
+    
+    Structure["HoloIndexes",array] = finishHoloGroup()
+}
+
+function number structureInRange(Pos:vector2, Type:string, Range) {
+    local Cells = getCellsInRange(Pos, Range)
+    
+    for(I=1,Cells:count()) {
+        local Cell = Cells[I,vector2]
+        
+        if(Pos == Cell) { continue }
+        
+        if(Structures[cellCoordsToIndex(Cell), table]["Name", string] == Type) {
+            return 1
+        }
+    }
+    
+    return 0
+}
+
+function vector2 getStructurePosInRange(Pos:vector2, Type:string, Range) {
+    local Cells = getCellsInRange(Pos, Range)
+    
+    for(I=1,Cells:count()) {
+        local Cell = Cells[I,vector2]
+        
+        if(Pos == Cell) { continue }
+        
+        if(Structures[cellCoordsToIndex(Cell), table]["Name", string] == Type) {
+            return Cell
+        }
+    }
+    
+    return vec2(-1,-1)
+}
+
+function number structureInRangeCityCheck(Pos:vector2, Range) {
+    local Cells = getCellsInRange(Pos, Range)
+    
+    for(I=1,Cells:count()) {
+        local Cell = Cells[I,vector2]
+        
+        if(Pos == Cell) { continue }
+        
+        local Structure = Structures[cellCoordsToIndex(Cell), table]["Name", string]
+        if(Structure == "City" || Structure == "Ruins") {
+            return 1
+        }
+    }
+    
+    return 0
+}
+
+function table spawnStructure(Type:string, ClientIndex, Pos:vector2) {
+    if(Structures:exists(cellCoordsToIndex(Pos))) { return table() }
+    
+    switch(Type) {
+        case "City",
+            if(structureInRangeCityCheck(Pos, 2)) { return table() } 
+        break
+        case "Outpost",
+            if(!structureInRange(Pos, "Ruins", 1)) { return table() }
+        break
+    }
+    
+    local Structure = table("X"=Pos:x(), "Y"=Pos:y(), "ClientIndex"=ClientIndex):merge(StructureTypes[Type, table])
+    local Client = Shared["Client"+ClientIndex, table]
+    
+    Structures[cellCoordsToIndex(Pos), table] = Structure
+    
+    initDrawStructure(Structure)
+    
+    switch(Type) {
+        case "City",
+            #createBorders(Structure, 1)
+            
+            Client["Cities",array]:pushVector2(Pos)
+            
+            Structure["Population",number] = ClientIndex:getModifier("NewCityPop")
+            
+            Structure["Productions",array] = array():add(Client["BaseProductions",array])
+            Structure["Built",table] = table():merge(Client["UniquesBuilt",table])
+            #"updateCityYields"(Structure)
+            
+            dsSendDirect("NewPlayerCity", Client["E2",entity], 0)
+        break
+        case "Outpost",
+            #createBorders(Structure, 0)
+        break
+    }
+    
+    return Structure
+}
+
+function deleteStructure(Structure:table) {    
+    local HoloIndexes = Structure["HoloIndexes",array]
+    
+    for(I=1,HoloIndexes:count()) {
+        deleteHolo(HoloIndexes[I,number])
+    }
+    
+    deleteHolo(Structure["ParentHoloIndex",number])
+    
+    ## also need to delete associated borders maybe
+    
+    Structures:unset(cellCoordsToIndex(Structure:getPos()))
+}
+
+function deleteStructure(Pos:vector2) {
+    local Index = cellCoordsToIndex(Pos)
+    if(!Structures:exists(Index)) { return }
+     
+    deleteStructure(Structures[Index,table])
+}
+
+function deleteBorders(Structure:table, Range) {
+    local Cells = getCellsInRange(Structure:getPos(),Range)
+    for(I=1,Cells:count()) {
+        local Cell = Cells[I,vector2]
+        local CellIndex = cellCoordsToIndex(Cell)
+        
+        if(!Borders:exists(CellIndex)) { continue }
+        
+        local Border = Borders[CellIndex, table]
+        
+        deleteHolo(Border["HoloIndex", number])
+        
+        Border:clear()
+        
+        Borders:unset(CellIndex)
+    }
+}
+
+function updateBorders(Structure:table, Range) {
+    local Cells = getCellsInRange(Structure:getPos(),Range)
+    for(I=1,Cells:count()) {
+        local Cell = Cells[I,vector2]
+        
+        if(!Borders:exists(cellCoordsToIndex(Cell))) { continue }
+        
+        local Border = Borders[cellCoordsToIndex(Cell), table]
+        
+        Border["ClientIndex", number] = Structure["ClientIndex",number]
+        holoColor(Border["HoloIndex", number], PLAYER_COLORS[Structure["ClientIndex",number], vector], 80)
+    }
+}
+
+function table:convertStructure(NewClientIndex) {
+    local Type = This["Name",string]
+    
+    switch(Type) {
+        case "City",
+    
+        local OldOwnerCities = Shared["Client"+This["ClientIndex",number], table]["Cities",array]
+        for(I=1,OldOwnerCities:count()) {
+            if(OldOwnerCities[I,vector2] == This:getPos()) {
+                OldOwnerCities:remove(I)
+                break
+            }
+        }
+        
+        This["ClientIndex",number]:cityLostNotification(This)
+        NewClientIndex:cityCapturedNotification(This)
+        
+        for(I=1,UniqueProductions:count()) {
+            local ProductKey = UniqueProductions:keys()[I,string]
+            if(This["Built",table][ProductKey,number]) {
+                "setUniqueBuilt"(This["ClientIndex",number], ProductKey, 0)
+            }
+        }
+        
+        This["ClientIndex",number] = NewClientIndex
+        
+        updateBorders(This, 1)
+        
+        This["Population",number] = 1
+        This["Health", number] = 30
+        
+        "regenCityProductions"(This)
+        
+        This["Modifiers",table]:clear()
+        This["Built",table] = table():merge(Shared["Client"+NewClientIndex, table]["UniquesBuilt",table])
+        
+        # no citadel
+        This["HasCitadel",number] = 0
+        This["CitadelProgress", number] = 0
+        
+        Shared["Client"+NewClientIndex, table]["Cities",array]:pushVector2(This:getPos())
+        
+        "promptCitiesChanged"()
+
+        break
+        
+        case "Outpost",
+        
+        deleteBorders(This, 0)
+        
+        local TargetRuins = Structures[cellCoordsToIndex(This["TargetCell",vector2]),table]
+        TargetRuins["Claimed",number] = 0
+        
+        deleteStructure(This)
+        
+        break
+    }
+}
+
+function number drawStructureProcess(Index, Params:table) {
+    local Structure = Structures[Params["Structure",number],table]
+    
+    if(holoRemainingSpawns() < 15) { return 0 }
+    
+    finishDrawStructure(Structure)
+    
+    switch(Structure["Name",string]) {
+        case "City",
+            createBorders(Structure, 1)
+        break
+        case "Outpost",
+            createBorders(Structure, 0)
+        break
+    }
+    
+    return 1
+}
+
+function number:activateRefugeeStructure(Structure:table) {
+    local Client = Shared["Client"+This, table]
+    local Option = randint(1,3)
+    
+    switch(Option) {
+        case 1,
+        Client["Evolution",number] = Client["Evolution",number] + 20
+        
+        This:collectedRefugeesNotification("+20 Evolution")
+        break
+        case 2,
+        Client["Scrap",number] = Client["Scrap",number] + 25
+        
+        This:collectedRefugeesNotification("+25 Scrap")
+        break
+        case 3,
+        local RandomCityPos = Client["Cities",array][randint(1,Client["Cities",array]:count()), vector2]
+        
+        local City = Structures[cellCoordsToIndex(RandomCityPos), table]
+        
+        City["Population",number] = City["Population",number] + 1
+        
+        This:collectedRefugeesNotification("+1 Population to City")
+        break
+    }
+    
+    if((This:getModifier("RefugeesGrantBuilders")-1) && random() >= 0.8) {
+        attemptSpawnInRange(Client:getFactionUnits()[2,string], This, Structure:getPos(), 1)
+    }
+    
+    deleteStructure(Structure)
+    
+    "promptResourcesChanged"()
+}
+
+function testForRefugeeStructure(Unit:table) {
+    if(Unit["ClientIndex",number] == 0) { return }
+    
+    local Pos = Unit:getPos()
+    
+    local Structure = Structures[cellCoordsToIndex(Pos), table]
+    if(Structure["Name",string] == "Refugees") {
+        Unit["ClientIndex",number]:activateRefugeeStructure(Structure)
+        
+        Unit["ParentHolo",entity]:soundPlay(2,1,"ui/itemcrate_smash_common.wav")
+        soundPitch(2, 70)
+    }
+}

@@ -1,0 +1,515 @@
+@name H2Civ Units
+@inputs 
+@outputs 
+@persist Units:table
+@trigger 
+
+Units = table()
+
+Shared["Units", table] = Units
+
+#
+
+function table:pushHumanUnit(Parent, Pos:vector, Scale:vector, Ang:angle, Model:string, Anim:string) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos, Scale, Ang)
+    holoModel(I, Model)
+    holoParent(I, Parent)
+    holoAnim(I, Anim)
+}
+
+function table:pushArmedHumanUnit(Parent, Pos:vector, Scale:vector, Ang:angle, Model:string, Anim:string, Weapon:string, WeapOffset:vector, WeapAng:angle) {
+    local IP = getHoloIndex()
+    local H = holoCreate(IP, Pos, Scale, Ang)
+    holoModel(IP, Model)
+    holoParent(IP, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, H:attachmentPos("anim_attachment_RH")+H:toLocalAxis(WeapOffset), Scale, H:attachmentAng("anim_attachment_RH")+WeapAng)
+    holoModel(I, Weapon)
+    holoParentAttachment(I, H, "anim_attachment_RH")
+    
+    holoAnim(IP, Anim)
+}
+
+function table:pushArmedHumanUnit(Parent, Pos:vector, Scale:vector, Ang:angle, Model:string, Anim, Weapon:string, WeapOffset:vector, WeapAng:angle) {
+    local IP = getHoloIndex()
+    local H = holoCreate(IP, Pos, Scale, Ang)
+    holoModel(IP, Model)
+    holoParent(IP, Parent)
+    
+    local I = getHoloIndex()
+    holoCreate(I, H:attachmentPos("anim_attachment_RH")+H:toLocalAxis(WeapOffset), Scale, H:attachmentAng("anim_attachment_RH")+WeapAng)
+    holoModel(I, Weapon)
+    holoParentAttachment(I, H, "anim_attachment_RH")
+    
+    holoAnim(IP, Anim)
+}
+
+## Rebel ##
+
+function table:drawRebelSettlersUnit(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    This:pushHumanUnit(Parent, Pos+vec(-1.6,-2.2,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group03/Female_02.mdl", "idle_angry")
+    This:pushHumanUnit(Parent, Pos+vec(1.6,-2.2,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group03/Male_01.mdl", "idle_angry")
+    This:pushHumanUnit(Parent, Pos+vec(0,0.6,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group02/male_02.mdl", "lineidle01")
+    This:pushHumanUnit(Parent, Pos+vec(2.2,2,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group02/Female_07.mdl", "lineidle01")
+    This:pushHumanUnit(Parent, Pos+vec(-2.2,2,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group02/Female_02.mdl", "lineidle02")
+}
+
+#[function number:drawRebelBuilderUnit(Pos:vector, Ang:angle, Scale:vector) {
+    This:pushHumanUnit(1,Pos+vec(0,-1.25,0)*Scale, Scale*0.05, Ang, "models/Humans/Group02/Male_05.mdl", "lineidle03")
+    This:pushHumanUnit(2,Pos+vec(1.5,1,0)*Scale, Scale*0.05, Ang + ang(0,random(-5,5),0), "models/Humans/Group02/Male_05.mdl", "lineidle03")
+    This:pushHumanUnit(3,Pos+vec(-1.5,1,0)*Scale, Scale*0.05, Ang + ang(0,random(-5,5),0), "models/Humans/Group02/Male_05.mdl", "lineidle03")
+}]#
+
+function table:drawRebelScoutsUnit(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    This:pushArmedHumanUnit(Parent, Pos+vec(0,-1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group03/Female_01.mdl", "pistol_idle", "models/weapons/w_pistol.mdl", vec(-0.45,0.5,-0.4), ang(180,0,0))
+    This:pushArmedHumanUnit(Parent, Pos+vec(2,1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group03/Female_01.mdl", "pistol_idle", "models/weapons/w_pistol.mdl", vec(-0.45,0.5,-0.4), ang(180,0,0))
+    This:pushArmedHumanUnit(Parent, Pos+vec(-2,1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group03/Female_01.mdl", "pistol_idle", "models/weapons/w_pistol.mdl", vec(-0.45,0.5,-0.4), ang(180,0,0))
+}
+
+function table:drawRebelSoldiersUnit(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    This:pushArmedHumanUnit(Parent, Pos+vec(0,-1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group03/male_02.mdl", 136, "models/weapons/w_smg1.mdl", vec(-0.7,1.3,-0.8), ang())
+    This:pushArmedHumanUnit(Parent, Pos+vec(2,1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group03/male_02.mdl", 136, "models/weapons/w_smg1.mdl", vec(-0.7,1.3,-0.8), ang())
+    This:pushArmedHumanUnit(Parent, Pos+vec(-2,1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group03/male_02.mdl", 136, "models/weapons/w_smg1.mdl", vec(-0.7,1.3,-0.8), ang())
+}
+
+function table:drawRebelShockTroopersUnit(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    This:pushArmedHumanUnit(Parent, Pos+vec(0,-1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group03/Female_06.mdl", "idle_angry_rpg", "models/weapons/w_rocket_launcher.mdl", vec(-0.10,1.9,-2.1), ang(180,0,0))
+    This:pushArmedHumanUnit(Parent, Pos+vec(2,1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group03/Female_06.mdl", "idle_angry_rpg", "models/weapons/w_rocket_launcher.mdl", vec(-0.10,1.9,-2.1), ang(180,0,0))
+    This:pushArmedHumanUnit(Parent, Pos+vec(-2,1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group03/Female_06.mdl", "idle_angry_rpg", "models/weapons/w_rocket_launcher.mdl", vec(-0.10,1.9,-2.1), ang(180,0,0))
+}
+
+function table:pushJeepSquad(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(0,0,-0.15)*Scale, Scale*0.03, Ang+ang(0,180,0))
+    holoModel(I, "models/buggy.mdl")
+    holoParent(I, Parent)
+    holoAnim(I, "suspension")
+    holoBodygroup(I, 1, 1)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(0.4,0.6,0.95)*Scale, Scale*0.03, Ang+ang(10,-90,0))
+    holoModel(I, "models/Humans/Group03/male_06.mdl")
+    holoParent(I, Parent)
+    holoAnim(I, 113)
+}
+
+function table:drawJeepSquadUnit(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    This:pushJeepSquad(Parent,Pos+vec(-8,-2,0), Ang, Scale)
+    This:pushJeepSquad(Parent,Pos+vec(8,-2,0), Ang, Scale)
+}
+
+function table:pushAirboatSquad(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(+I, Pos+vec(0,0,0)*Scale, Scale*0.035, Ang+ang(0,180,0))
+    holoModel(I, "models/airboat.mdl")
+    holoParent(I, Parent)
+    holoAnim(I, "propeller_spin1")
+    holoBodygroup(I, 1, 1)
+    holoBodygroup(I, 3, 1)
+    
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(0.2,-0.32,1.25)*Scale, Scale*0.032, Ang+ang(10,-90,0))
+    holoModel(I, "models/Humans/Group03/male_06.mdl")
+    holoParent(I, Parent)
+    holoAnim(I, 113)
+}
+
+function table:drawAirboatSquadUnit(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    This:pushAirboatSquad(Parent, Pos+vec(-8,-2,0), Ang, Scale)
+    This:pushAirboatSquad(Parent,Pos+vec(8,-2,0), Ang, Scale)
+}
+
+
+## ##
+
+## Combine ##
+
+function table:drawCombineSettlersUnit(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    This:pushHumanUnit(Parent, Pos+vec(-1.6,-2.2,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Police.mdl", "batonidle1")
+    This:pushHumanUnit(Parent, Pos+vec(1.6,-2.2,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Police.mdl", "batonidle2")
+    This:pushHumanUnit(Parent, Pos+vec(0,0.6,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group01/male_02.mdl", "lineidle01")
+    This:pushHumanUnit(Parent, Pos+vec(2.2,2,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group01/Female_03.mdl", "lineidle01")
+    This:pushHumanUnit(Parent, Pos+vec(-2.2,2,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Humans/Group02/Female_01.mdl", "lineidle02")
+}
+
+function table:drawCombineScoutsUnit(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    This:pushArmedHumanUnit(Parent, Pos+vec(0,-1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Police.mdl", "pistolidle2", "models/weapons/w_pistol.mdl", vec(-0.65,0.5,-0.4), ang(180,0,0))
+    This:pushArmedHumanUnit(Parent, Pos+vec(2,1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Police.mdl", "pistolidle2", "models/weapons/w_pistol.mdl", vec(-0.65,0.5,-0.4), ang(180,0,0))
+    This:pushArmedHumanUnit(Parent, Pos+vec(-2,1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Police.mdl", "pistolidle2", "models/weapons/w_pistol.mdl", vec(-0.65,0.5,-0.4), ang(180,0,0))
+}
+
+function table:drawCombineSoldiersUnit(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    This:pushArmedHumanUnit(Parent, Pos+vec(0,-1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/combine_soldier.mdl", "idle1", "models/weapons/w_smg1.mdl", vec(-0.75,1.5,-0.9), ang())
+    This:pushArmedHumanUnit(Parent, Pos+vec(2,1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/combine_soldier.mdl", "idle1", "models/weapons/w_smg1.mdl", vec(-0.75,1.5,-0.9), ang())
+    This:pushArmedHumanUnit(Parent, Pos+vec(-2,1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/combine_soldier.mdl", "idle1", "models/weapons/w_smg1.mdl", vec(-0.75,1.5,-0.9), ang())
+}
+
+function table:drawCombineElitesUnit(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    This:pushArmedHumanUnit(Parent, Pos+vec(0,-1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Combine_Super_Soldier.mdl", "idle1", "models/weapons/w_irifle.mdl", vec(-0.3,2.2,-1.7), ang(174,10,-6))
+    This:pushArmedHumanUnit(Parent, Pos+vec(2,1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Combine_Super_Soldier.mdl", "idle1", "models/weapons/w_irifle.mdl", vec(-0.3,2.2,-1.7), ang(174,10,-6))
+    This:pushArmedHumanUnit(Parent, Pos+vec(-2,1.5,0)*Scale, Scale*0.05, Ang + ang(0,-90,0), "models/Combine_Super_Soldier.mdl", "idle1", "models/weapons/w_irifle.mdl", vec(-0.3,2.2,-1.7), ang(174,10,-6))
+}
+
+function table:drawCombineHelicopterUnit(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(0,0,4.5)*Scale, Scale*0.02, Ang+ang(0,-90,0))
+    holoModel(I, "models/combine_helicopter.mdl")
+    holoParent(I, Parent)
+    holoAnim(I, "idle")
+}
+
+function table:drawCombineStriderUnit(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(0,0,8)*Scale, Scale*0.016, Ang+ang(0,-90,0))
+    holoModel(I, "models/combine_strider.mdl")
+    holoParent(I, Parent)
+    holoShadow(I, 0)
+    holoDisableShading(I, 1)
+    holoAnim(I, "idle01")
+}
+
+## Antlions ##
+
+function table:pushAntlionGroup(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos, Scale*0.035, Ang+ang(0,-90,0))
+    holoModel(I, "models/antlion.mdl")
+    holoParent(I, Parent)
+    holoAnim(I, "distractidle4")
+}
+
+function table:drawAntlionGroupUnit(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    This:pushAntlionGroup(Parent,Pos+vec(-11,-2,0), Ang, Scale)
+    This:pushAntlionGroup(Parent,Pos+vec(11,-2,0), Ang, Scale)
+    This:pushAntlionGroup(Parent,Pos+vec(0,-10,0), Ang, Scale)
+    This:pushAntlionGroup(Parent,Pos+vec(-6,11,0), Ang, Scale)
+    This:pushAntlionGroup(Parent,Pos+vec(6,11,0), Ang, Scale)
+}
+
+#
+
+function table:drawEmbarked(Parent, Pos:vector, Ang:angle, Scale:vector) {
+    local I = getHoloIndex()
+    holoCreate(I, Pos+vec(0,0,0.4)*Scale, Scale*vec(0.005,0.007,0.005), Ang+ang(0,-90,0))
+    holoModel(I, "models/props/dust_massive/barge/barge.mdl")
+    holoParent(I, Parent)
+}
+
+## ##
+
+function initDrawUnit(Unit:table) {
+    local Pos = getTile(vec2(Unit["X",number], Unit["Y",number])):getTileTop()
+    
+    local HoloIndex = getHoloIndex()
+    local ParentHolo = holoCreate(HoloIndex, Pos, vec(GeneratorSettings["GridScale",number]*0.7):setZ(0.05), ang())
+    holoModel(HoloIndex, "models/holograms/hq_cylinder.mdl")
+    holoColor(HoloIndex, PLAYER_COLORS[Unit["ClientIndex",number], vector], 150)
+    
+    Unit["ParentHolo", entity] = ParentHolo
+    Unit["ParentHoloIndex",number] = HoloIndex
+    
+    startHoloGroup()
+    
+    Unit["customDrawFunc", string](Unit, HoloIndex, Pos, ang(), vec(GeneratorSettings["GridScale",number]))
+    
+    Unit["HoloIndexes",array] = finishHoloGroup()
+    
+    # holoMarker
+    
+    #
+}
+
+function table spawnUnit(Type:string, ClientIndex, Pos:vector2) {
+    if(Units:exists(cellCoordsToIndex(Pos))) { return table() }
+    
+    local Unit = table("X"=Pos:x(), "Y"=Pos:y(), "ClientIndex"=ClientIndex, "MoveType"="LandNormal", "CombatType"="Infantry", "Health"=100):merge(UnitTypes[Type, table])
+    Unit["Movement", number] = Unit["MaxMovement", number]
+    
+    Units[cellCoordsToIndex(Pos), table] = Unit
+    
+    initDrawUnit(Unit)
+    
+    return Unit
+}
+
+function table attemptSpawnInRange(Type:string, ClientIndex, Pos:vector2, Range) {
+    local Cells = getCellsInRange(Pos, Range)
+    for(I=1,Cells:count()) {
+        local Cell = Cells[I,vector2]
+        local MoveType = UnitTypes[Type,table]["MoveType",string]
+        if(MoveType == "") { MoveType = "LandNormal" }
+        if(MovementTable[MoveType, table][Tiles[cellCoordsToIndex(Cell), table]["Name",string], number] < 0) { continue }
+        if(!Units:exists(cellCoordsToIndex(Cell))) {
+            return spawnUnit(Type, ClientIndex, Cell)
+        }
+    }
+    
+    return table()
+}
+
+function table:deleteUnit() {
+    local HoloIndexes = This["HoloIndexes",array]
+    
+    for(I=1,HoloIndexes:count()) {
+        deleteHolo(HoloIndexes[I,number])
+    }
+    
+    deleteHolo(This["ParentHoloIndex", number])
+    
+    local Pos = This:getPos()
+    
+    This:clear()
+    
+    Units:unset(cellCoordsToIndex(Pos))
+    
+    "invokeCellChanged"(Pos)
+}
+
+function table:updateUnitActors() {
+    local HealthPercent = This["Health",number]/100
+    
+    local HoloIndexes = This["HoloIndexes",array]
+    
+    local ActorsToDisplay = max(ceil(This["Actors",number] * HealthPercent),1)
+    
+    for(I=1,HoloIndexes:count()) {
+        if(ceil(I/This["HolosPerActor",number]) <= ActorsToDisplay) {
+            holoAlpha(HoloIndexes[I,number], 255)
+        } else {
+            holoAlpha(HoloIndexes[I,number], 0)
+        } 
+    }
+}
+
+function table:embarkUnitTo(Pos:vector2) {
+    if(This["Movement",number] <= 0) { return }
+    if(This["Embarked",number]) { return }
+    
+    local CellIndex = cellCoordsToIndex(Pos)
+    
+    if(Tiles[CellIndex, table]["Name",string] != "Coast") { return }
+    
+    if(Units:exists(CellIndex)) { return }
+    
+    local EmbarkedUnit = spawnUnit("Embarked", This["ClientIndex", number], Pos)
+    
+    EmbarkedUnit["Embarked", number] = 1
+    This["Embarked", number] = 1
+    
+    EmbarkedUnit["Movement",number] = 0
+    EmbarkedUnit["ReferenceUnit", table] = This:clone()
+    
+    This:deleteUnit()
+}
+
+function table:disembarkUnitTo(Pos:vector2) {
+    if(This["Movement",number] <= 0) { return }
+    if(!This["Embarked",number]) { return }
+    
+    local CellIndex = cellCoordsToIndex(Pos)
+    
+    if(Structures[CellIndex, table]["Name",string] == "City") { return }
+    if(Tiles[CellIndex, table]["Name",string] == "Mountain" || Tiles[CellIndex, table]["Name",string] == "Ice") { return }
+    
+    if(Units:exists(CellIndex)) { return }
+    
+    DisembarkedUnit = This["ReferenceUnit", table]
+    
+    DisembarkedUnit["X",number] = Pos:x()
+    DisembarkedUnit["Y",number] = Pos:y()
+    
+    DisembarkedUnit["Embarked", number] = 0
+    
+    Units[CellIndex, table] = DisembarkedUnit
+    initDrawUnit(DisembarkedUnit)
+    DisembarkedUnit:updateUnitActors()
+    
+    DisembarkedUnit["Movement",number] = 0
+    
+    This:deleteUnit()
+}
+
+function table:moveUnitTo(Pos:vector2) {
+    if(This["Movement",number] == 0) { return }
+
+    local CellIndex = cellCoordsToIndex(Pos)
+
+    local MoveCost = This:getMovementCost(Pos)
+    
+    if(MoveCost <= 0) {
+        if(!This["Embarked",number]) {
+            This:embarkUnitTo(Pos)
+        } else {
+            This:disembarkUnitTo(Pos)
+        }
+        return
+    }
+    
+    if(Structures:exists(CellIndex)) {
+        local Structure = Structures[CellIndex, table]
+        
+        if((Structure["Name",string] == "City" || Structure["Name",string] == "Outpost") && Structure["ClientIndex",number] != This["ClientIndex",number]) { return }
+    }
+    
+    local OldPos = vec2(This["X",number],This["Y", number])
+
+    
+    if(MoveCost < 0) { return }
+    
+    This["Fortified",number] = 0
+    
+    This["Movement",number] = max(This["Movement",number] - MoveCost, 0)
+    
+    if(This["Movement",number] <= 0) { holoAlpha(This["ParentHoloIndex", number], 80) }
+    
+    Units:unset(cellCoordsToIndex(OldPos))
+    
+    This["X",number] = Pos:x()
+    This["Y", number] = Pos:y()
+    
+    holoPos(This["ParentHoloIndex",number],getTile(Pos):getTileTop())
+    # temp
+    local AngDelt = cellCoordsToWorld(Pos)-cellCoordsToWorld(OldPos)
+    holoAng(This["ParentHoloIndex",number],(AngDelt):toAngle()+ang(0,90,0))
+    
+    Units[cellCoordsToIndex(Pos), table] = This
+    
+    if(This:exists("MoveSound")) {
+        This["ParentHolo",entity]:soundPlay(5,2, This["MoveSound",string])
+        soundPitch(5, random(95,105))
+        soundVolume(5, 0.6)
+    }
+    
+    "testForRefugeeStructure"(This)
+    
+    "invokeCellChanged"(Pos)
+}
+
+function killUnit(Unit:table, Attacker:table) {
+    
+    if(Unit["ClientIndex",number] > 0) {
+        Unit["ClientIndex",number]:unitLostNotification(Unit)
+    } else {
+        local AttackerClient = Attacker["ClientIndex",number]
+        if((AttackerClient:getModifier("AliensProvideScrap")-1)) {
+            Shared["Client"+AttackerClient, table]["Scrap",number] = Shared["Client"+AttackerClient, table]["Scrap",number] + Unit["Strength", number]
+            AttackerClient:alienScrapNotification(Unit["Strength", number])
+        }
+    }
+    
+    Unit:deleteUnit()
+}
+
+function table:attackUnit(Other:table) {
+    #if(This["ClientIndex",number] == Other["ClientIndex",number]) { return }
+    if(This["Movement",number] <= 0) { return }
+    
+    local AttackerStrength = This:getAttackerStrength(Other)["Strength",number]
+    local DefenderStrength = Other:getDefenderStrength(This)["Strength", number]
+    
+    local StrengthRatio = AttackerStrength/DefenderStrength
+    
+    local AttackerDamaged = ceil(1/StrengthRatio * 30)
+    local DefenderDamaged = ceil(StrengthRatio * 30)
+    
+    local AttackerProportion = min(1, This["Health", number] / AttackerDamaged )
+    local DefenderProportion = min(1, Other["Health", number] / DefenderDamaged )
+    
+    local SmallestProportion = min(AttackerProportion,DefenderProportion)
+    
+    This["Health", number] = This["Health", number] - (AttackerDamaged*SmallestProportion)
+    Other["Health", number] = Other["Health", number] - (DefenderDamaged*SmallestProportion)
+    
+    This:updateUnitActors()
+    Other:updateUnitActors()
+    
+    #Face target
+    local SourcePos = cellCoordsToWorld(vec2(Other["X",number], Other["Y", number]))
+    local TargetPos = cellCoordsToWorld(vec2(This["X",number], This["Y", number]))
+    holoAng(This["ParentHoloIndex",number],(SourcePos-TargetPos):toAngle()+ang(0,90,0))
+    holoAng(Other["ParentHoloIndex",number],(TargetPos-SourcePos):toAngle()+ang(0,90,0))
+    
+    if(This:exists("AttackAnimation")) {
+        pushUnitAnimation(This, This["AttackAnimation",string], table())
+    }
+    if(Other:exists("DefendAnimation")) {
+        pushUnitAnimation(Other, Other["DefendAnimation",string], table())
+    }
+    
+    local AttackerStats = getClientStats(This["ClientIndex",number])
+    AttackerStats["AttacksThisTurn", number] = AttackerStats["AttacksThisTurn", number] + 1
+        
+    if(This["Health",number] == 0 & Other["Health",number] == 0) {
+        This["Health",number] = 1
+    }
+    
+    if(This["Health",number] <= 0) { killUnit(This, Other) }
+    if(Other["Health",number] <= 0) {
+        local MoveToPos = Other:getPos()
+        killUnit(Other, This)
+        if(This["Health",number] > 0) {
+            This:moveUnitTo(MoveToPos)
+        }
+    }
+    
+    This["Movement",number] = 0
+    holoAlpha(This["ParentHoloIndex", number], 80)
+    
+    "invokeCellChanged"(vec2(Other["X",number], Other["Y",number]))
+}
+
+function table:attackStructure(Structure:table) {
+    #if(This["ClientIndex",number] == Other["ClientIndex",number]) { return }
+    if(This["Movement",number] <= 0) { return }
+    
+    local AttackerStrength = This:getAttackerStrength(Structure)["Strength",number]
+    local DefenderStrength = 30#Other:getDefenderStrength(This)["Strength", number]
+    
+    local StrengthRatio = AttackerStrength/DefenderStrength
+    
+    local AttackerDamaged = ceil(1/StrengthRatio * 30)
+    local DefenderDamaged = ceil(StrengthRatio * 30)
+    
+    local AttackerProportion = min(1, This["Health", number] / AttackerDamaged )
+    local DefenderProportion = min(1, Structure["Health", number] / DefenderDamaged )
+    
+    local SmallestProportion = min(AttackerProportion,DefenderProportion)
+    
+    This["Health", number] = This["Health", number] - (AttackerDamaged*SmallestProportion)
+    Structure["Health", number] = Structure["Health", number] - (DefenderDamaged*SmallestProportion)
+    
+    This:updateUnitActors()
+
+    #Face target
+    local SourcePos = cellCoordsToWorld(Structure:getPos())
+    local TargetPos = cellCoordsToWorld(vec2(This["X",number], This["Y", number]))
+    holoAng(This["ParentHoloIndex",number],(SourcePos-TargetPos):toAngle()+ang(0,90,0))
+    
+    if(This:exists("AttackAnimation")) {
+        pushUnitAnimation(This, This["AttackAnimation",string], table())
+    }
+    
+    if(This["Health",number] == 0 & Structure["Health",number] == 0) {
+        This["Health",number] = 1
+    }
+    
+    if(This["Health",number] <= 0) { killUnit(This, Structure) }
+    
+    if(Structure["Health",number] <= 0) {
+        local MoveToPos = Structure:getPos()
+        
+        # convert
+        "convertStructure"(Structure, This["ClientIndex",number])
+        
+        if(This["Health",number] > 0) {
+            This:moveUnitTo(MoveToPos)
+        }
+    }
+    
+    This["Movement",number] = 0
+    holoAlpha(This["ParentHoloIndex", number], 80)
+    
+    "invokeCellChanged"(Structure:getPos())
+}

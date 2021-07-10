@@ -1,0 +1,112 @@
+@name H2Civ Music
+@inputs 
+@outputs 
+@persist Tracks:table TrackPlaying:string TrackStartTime Activities:table IsDynamic MusicEnabled
+@trigger 
+
+# Dynamic music system
+Tracks = table()
+
+# different tracks are selected based on activity and which faction is the most active
+# Progress in game - Early, Mid, Late
+# Activity - Idle, Rising, Danger
+# Factions - Combine, Rebel 
+
+
+Tracks["Opening",array] = array("music/hl1_song11.mp3", 30, "Menu")
+Tracks["Menu",array] = array("music/hl2_song20_submix0.mp3", 106)
+
+Tracks["Early_Idle_Combine",array] =  array("music/hl2_song1.mp3", 100)
+Tracks["Early_Rising_Combine",array] =  array("music/hl2_song4.mp3", 68)
+Tracks["Early_Danger_Combine",array] = array("music/hl2_song3.mp3", 85)
+
+
+Tracks["Mid_Idle_Combine", array] = array("music/hl2_song7.mp3", 54)
+Tracks["Mid_Rising_Combine", array] = array("music/hl2_song8.mp3", 60) #?
+Tracks["Mid_Danger_Combine", array] = array("music/hl2_song14.mp3", 157)
+
+
+Tracks["Late_Idle_Combine",array] = array("music/hl2_song26.mp3", 110)
+Tracks["Late_Rising_Combine",array] = array("music/hl2_song16.mp3", 110)
+Tracks["Late_Danger_Combine",array] = array("music/hl2_song25_teleporter.mp3", 67)
+
+
+#
+Tracks["Early_Idle_Rebel", array] = array("music/hl2_song2.mp3", 140)
+Tracks["Early_Rising_Rebel", array] = array("music/hl2_song19.mp3", 118)
+Tracks["Early_Danger_Rebel", array] = array("music/hl2_song12_long.mp3", 90)
+
+
+Tracks["Mid_Idle_Rebel", array] = array("music/hl1_song5.mp3", 93)
+Tracks["Mid_Rising_Rebel", array] = array("music/hl2_song20_submix4.mp3", 160)
+Tracks["Mid_Danger_Rebel", array] = array("music/hl2_song15.mp3", 70)
+
+Tracks["Late_Idle_Rebel", array] = array("music/hl2_song31.mp3", 101)
+Tracks["Late_Rising_Rebel", array] = array("music/hl2_song29.mp3", 120)
+Tracks["Late_Danger_Rebel",array] = array("music/hl1_song25_remix3.mp3", 65)
+
+Activities = table()
+
+Activities["Combine",number] = 0
+Activities["Rebel",number] = 0
+
+function string dynamicSelectTrack(Activities:table, Turn) {
+    local Faction = "Combine"
+    if(Activities["Rebel",number] > Activities["Combine",number]) {
+        Faction = "Rebel"
+    }
+    
+    local TurnText = "Early"
+    if(Turn > 40) {
+        TurnText = "Mid"
+    }
+    if(Turn > 80) {
+        TurnText = "Late"    
+    }
+    
+    ActivityText = "Idle"
+    if(Activities[Faction,number] > 0.5) {
+        ActivityText = "Rising"
+    }
+    if(Activities[Faction,number] > 0.8) {
+        ActivityText = "Danger"
+    }
+    
+    return TurnText + "_" + ActivityText + "_" + Faction
+}
+
+function startPlayingTrack(Key:string) {
+    if(!MusicEnabled) { return }
+    MapBase:soundPlay(10, 0, Tracks[Key, array][1,string])
+    soundVolume(10, 0)
+    
+    TrackPlaying = Key
+    TrackStartTime = systime()
+}
+
+function startDynamic() {
+    if(!MusicEnabled) { return }
+    IsDynamic = 1
+    startPlayingTrack(dynamicSelectTrack(Activities, Turn))
+}
+
+function onTrackFinish() {
+    if(IsDynamic) {
+        startPlayingTrack(dynamicSelectTrack(Activities, Turn))
+    } else {
+        if(Tracks[TrackPlaying, array]:exists(3)) {
+            startPlayingTrack(Tracks[TrackPlaying, array][3,string])
+        } else {
+            startPlayingTrack(TrackPlaying)
+        }
+    }
+}
+
+function trackUpdate() {
+    if(TrackPlaying == "") { return }
+    
+    soundVolume(10, clamp( ((systime() - TrackStartTime)/5)^2,0,0.6))
+    if(systime() - TrackStartTime > Tracks[TrackPlaying, array][2,number] + 8) {
+        onTrackFinish()
+    }
+}

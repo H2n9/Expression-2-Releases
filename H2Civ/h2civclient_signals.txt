@@ -1,0 +1,60 @@
+@name H2CivClient Signals
+@inputs 
+@outputs 
+@persist 
+@trigger 
+@autoupdate
+
+dsJoinGroup("H2Civ")
+
+function updateSignals() {
+    if(dsClk("InitialiseClient")) {
+        ParentE2 = dsGetSender()
+        # Tell the parent e2 that we are are a client
+        dsSendDirect("RegisterClient", dsGetSender(), 0)
+    }
+    
+    if(dsClk("SetClientIndex")) {
+        setupClient(dsGetNumber())
+    }
+    
+    if(dsClk("ResetClient")) {
+        reset()
+    }
+    
+    if(dsClk("MapLoaded")) {
+        trigger("MapLoaded", table())
+    }
+    
+    if(dsClk("CellChanged")) {
+        trigger("CellChanged", table("Pos"=dsGetVector2()))
+    }
+    
+    if(dsClk("StartGame")) {
+        if(!PlayerSet) {
+            holoAlpha(3, 255)
+        }
+        setState("Game")
+    }
+    
+    if(dsClk("NewTurn")) {
+        if(PlayerSet) {
+            holoAlpha(3, 0)
+        }
+        trigger("NewTurn", table())
+    }
+    
+    if(dsClk("NewPlayerCity")) {
+        trigger("NewPlayerCity", table())
+    }
+    
+    if(dsClk("CitiesChanged")) {
+        trigger("CitiesChanged", table())
+    }
+    if(dsClk("ResourcesChanged")) {
+        trigger("ResourcesChanged", table())
+    }
+    if(dsClk("NotificationUpdate")) {
+        trigger("NotificationUpdate", table())
+    }
+}

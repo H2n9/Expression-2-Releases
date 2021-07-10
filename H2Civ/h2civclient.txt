@@ -1,0 +1,177 @@
+@name H2CivClient
+@inputs 
+@outputs 
+@persist Shared:gtable ParentE2:entity MapBase:entity ClientIndex Player:entity PlayerSet State:string
+@persist Tiles:table Features:table Units:table Structures:table Borders:table Roads:table
+@persist Notifications:table
+@trigger 
+@autoupdate
+
+interval(100)
+timer("SubprocessUpdate", 90)
+timer("EGPUpdate", 160)
+
+runOnChat(1)
+
+if(first()) {
+    #include "H2n9_Subprocess_V2"
+    #include "H2n9_Subprocess_Delayed"
+    #include "H2n9_Events_V2"
+    #include "H2n9_EGP"
+    #include "H2n9_EGP_Primitives"
+    #include "H2n9_EGP_Groups"
+    #include "H2n9_EGP_Lists"
+    #include "H2n9_EGP_Interactables"
+    #include "H2n9_EGP_Animations"
+    
+    defineTheme("C", table("Color"=vec(80)))
+    defineTheme("D", table("Color"=vec(50)))
+    defineTheme("E", table("Color"=vec(255,130,0))) 
+    defineTheme("F", table("Color"=vec(255,130,0)*0.8)) 
+    
+    Shared = gTable("H2Civ")
+
+function setState(NewState:string) {
+    State = NewState
+    trigger("EnterState-"+State, table())
+}
+    #include "H2Civ_Modifiers"
+    #include "H2CivShared"
+    #include "H2CivShared_Notifications"
+    #include "H2CivShared_Map"
+    #include "H2CivShared_Units"
+    #include "H2CivShared_Factions"
+    #include "H2CivShared_Evolutions"
+    #include "H2CivClient_EGP"
+    #include "H2CivClient_HUD"
+    #include "H2CivClient_Core"
+    #include "H2CivClient_Chat"
+    
+function setupClient(Index) {
+    if(ClientIndex != 0) { return }
+    
+    ClientIndex = Index
+    
+    Shared["Client"+ClientIndex, table] = table("E2"=entity(), "Cities"=array(), "Evolved"=table(), "Notifications"=table(), "BaseProductions"=table(), "UniquesBuilt"=table(), "Stats"=table(), "LobbyStatus"="Open", "Faction"="Rebel")
+    
+    setName("H2CivClient - " + ClientIndex)
+    
+    MapBase = Shared["MapBase",entity]
+    
+    Tiles = Shared["Tiles",table]
+    Features = Shared["Features",table]
+    Units = Shared["Units",table]
+    Structures = Shared["Structures", table]
+    Borders = Shared["Borders",table]
+    Roads = Shared["Roads",table]
+    
+    Notifications = Shared["Client"+ClientIndex,table]["Notifications",table]
+    
+    # hover holo
+    holoCreate(1, vec(), vec(GeneratorSettings["GridScale",number]*0.9):setZ(1))
+    holoColor(1, PLAYER_COLORS[ClientIndex, vector], 140)
+    holoDisableShading(1,1)
+    holoModel(1, "models/holograms/hexagon.mdl")
+    
+    # selection holo
+    holoCreate(2, vec(), vec(GeneratorSettings["GridScale",number]*0.9):setZ(0.1))
+    holoColor(2, PLAYER_COLORS[ClientIndex, vector], 200)
+    holoDisableShading(2,1)
+    holoModel(2, "models/holograms/hexagon.mdl")
+    
+    # Highlight
+    holoCreate(4, entity():pos(), vec(2,2,9), ang(180,0,0))
+    holoColor(4, PLAYER_COLORS[ClientIndex, vector]*0.8, 160)
+    holoDisableShading(4,1)
+    holoModel(4, "hq_cone")
+    
+    # Action/move indicator holos
+    for(I=1,5) {
+        holoCreate(5+I, vec(), vec(GeneratorSettings["GridScale",number]*0.9):setZ(0.1))
+        holoColor(5+I, vec(255), 0)
+        holoDisableShading(5+I,1)
+        holoModel(5+I, "models/holograms/hexagon.mdl")
+    }
+    
+    trigger("SetupClient", table())
+    setState("WaitForPlayer")
+}
+
+function setPlayer(Ply:entity) {
+    Player = Ply
+    PlayerSet = 1
+    trigger("SetPlayer", table())
+    
+    Shared["Client"+ClientIndex, table]["Player",entity] = Ply
+    Shared["Client"+ClientIndex, table]["HasPlayer",number] = 1
+    
+    Shared["Client"+ClientIndex, table]["LobbyStatus", string] = "Menu"
+    
+    holoVisible(4, players(), 0)
+    holoVisible(4, Player, 1)
+    
+    setName("H2CivClient - " + ClientIndex + " - " + Ply:name())
+    
+    setState("WaitForReady")
+    
+    # throttle subprocesses since we have a lot of non subprocess logic running
+    GlobalSubprocessRate = 0.98
+}
+
+    #include "H2CivClient_Signals"
+    
+    State = ""
+    
+    #initialiseHUD(table())
+
+
+function stateUpdate() {
+    switch(State) {
+        case "WaitForPlayer",
+        trigger("UpdateState-WaitForPlayer", table())
+        break
+        
+        case "WaitForReady",
+        trigger("UpdateState-WaitForReady", table())
+        break
+        
+        case "Game",
+        trigger("UpdateState-Game", table())
+        if(PlayerSet) { 
+            updateForPlayer()
+        }
+        break
+    }
+}
+
+}
+
+if(duped()) {
+    reset()
+}
+
+if(dsClk()) {
+    updateSignals()
+}
+
+if(changed(EGP)) {
+    #initialiseEGP(table())
+}
+
+stateUpdate()
+
+if(clk("EGPUpdate")) {
+    updateEGP()
+    updateTransforms()
+}
+
+if(clk("SubprocessUpdate")) {
+    updateDelayedProcesses()
+    updateSubprocesses()
+}
+
+if(PlayerSet) {
+    if(chatClk(Player)) {
+        onChat(Player:lastSaid())
+    }
+}

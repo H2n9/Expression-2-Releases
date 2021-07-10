@@ -1,0 +1,230 @@
+@name H2Civ Game
+@inputs 
+@outputs 
+@persist Turn
+@persist REQUIRED_PLAYERS_TO_START
+@persist TurnLoadingAnim
+@trigger 
+
+REQUIRED_PLAYERS_TO_START = 1
+
+# turnloading holo
+
+holoCreate(1, MapBase:pos() + vec(0,0,80), vec(0))
+
+for(I=1,6) {
+    local Step = 360/6 * I
+    holoCreate(1+I, MapBase:pos() + vec(sin(Step)*150,cos(Step)*150,80), vec(4))
+    holoModel(1+I, "hq_sphere")
+    holoColor(1+I, vec(70,70,90))
+    holoParent(1+I, 1)
+}
+
+function setTurnLoadingHoloAlpha(Alpha) {
+    for(I=1,6) {
+        holoAlpha(1+I, Alpha)
+    }
+}
+
+function spawnAllPlayerStarts() {
+    for(I=1,Clients) {
+        local Spawnpoint = Spawnpoints[I,vector2]
+        
+        local Client = Shared["Client"+I, table]
+        
+        Client["BaseProductions",array] = array():add(Factions[Client["Faction",string],table]["Productions",array])
+        
+        spawnUnit(Client:getFactionUnits()[1,string], I, Spawnpoint)
+        
+        switch(Client["Faction",string]) {
+            
+            case "Rebel",
+            attemptSpawnInRange("Rebel_Scouts", I, Spawnpoint, 1)
+            break
+            
+            case "Combine",
+            attemptSpawnInRange("Combine_Scouts", I, Spawnpoint, 1)
+            break
+            
+            default,
+            break
+        }
+        
+        
+        Shared["Client"+I, table]["Scrap", number] = 20
+    }
+}
+
+function waitForPlayerReady() {
+    local NumReady = 0
+    local WithPlayer = 0 
+    for(I=1,Clients) {
+        local PlayerTable = Shared["Client"+I,table]
+        
+        NumReady += PlayerTable["Ready",number]
+        WithPlayer += PlayerTable["HasPlayer", number]
+    }
+    
+    if(NumReady >= REQUIRED_PLAYERS_TO_START && NumReady == WithPlayer) {
+        setState("Game")
+        
+        spawnAllPlayerStarts()
+        promptPlayersStart()
+        
+        startDynamic()
+    }
+}
+
+function nextTurn() {
+    Turn += 1
+    
+    Shared["Turn",number] = Turn
+    
+    for(I=1,Clients) {
+        local Client = Shared["Client"+I, table]
+        Client["EndTurn", number] = 0
+        
+        # reset yield increases
+        Client["ScrapInc", number] = 0
+        Client["EvolutionInc", number] = 0
+        
+        local Stats = getClientStats(I)
+        
+        # apply faction stats to music activities
+        Activities[Client["Faction",string], number] = Activities[Client["Faction",string], number] + (Stats["AttacksThisTurn",number]/4)
+        Activities[Client["Faction",string], number] = clamp(Activities[Client["Faction",string], number] * 0.9,0,1) # slight issue here is that faction that has more players will lose activity quicker
+        
+        # reset turn stats
+        Stats["AttacksThisTurn",number] = 0
+        
+        I:clearNotifications()
+    }
+    
+    setTurnLoadingHoloAlpha(255)
+    
+    Shared["TotalAIUnits",number] = 0
+    
+    addSubprocess("updateTurnForUnits", table("Keys"=Units:keys()), table("Rate"=0.8, "StartIndex"=Units:keys():count(), "Increment"=-1))
+    addSubprocess("updateTurnForStructures", table("Keys"=Structures:keys()), table("Rate"=0.8))
+}
+
+function waitForPlayerEndTurn() {
+    for(I=1,Clients) {
+        local Client = Shared["Client"+I, table]
+        if(Client["HasPlayer", number] == 0) { continue } 
+        if(Client["EndTurn", number] == 0) {
+            return
+        }
+    }
+    
+    nextTurn()
+}
+
+#
+
+function updateForAIUnit(Unit:table) {
+    local PotentialAttacks = Unit:getAttackCells()
+    
+    if(PotentialAttacks:count() > 0) {
+        local Target = PotentialAttacks[randint(1,PotentialAttacks:count()),vector2]
+        Unit:attackUnit( Units[cellCoordsToIndex(Target),table] )
+        
+        return
+    }
+    
+    while(Unit["Movement",number] > 0) {
+        local PotentialMoves = Unit:getMoveCells()
+        local Target = PotentialMoves[randint(1,PotentialMoves:count()),vector2]
+        Unit:moveUnitTo(Target)
+    }
+}
+
+#
+
+function number updateTurnForUnits(Index, Params:table) {
+    local Keys = Params["Keys",array]
+    
+    if(Index <= 0) {
+        return 1
+    }
+    
+    local Unit = Units[Keys[Index, number], table]
+    
+    Unit["Movement", number] = Unit["MaxMovement", number]
+    holoAlpha(Unit["ParentHoloIndex", number], 150)
+    
+    if(Unit["Fortified",number]) {
+        Unit["Health",number] = Unit["Health",number] + min(12, 100-Unit["Health",number])
+    }
+    
+    if(Unit["ClientIndex",number] == 0) {
+        updateForAIUnit(Unit)
+        
+        Shared["TotalAIUnits",number] = Shared["TotalAIUnits",number] + 1
+    }
+    
+    return 0
+}
+
+function number updateTurnForStructures(Index, Params:table) {
+    if(holoRemainingSpawns() < 7) { return -1 }
+    
+    local Keys = Params["Keys",array]
+    
+    if(Index > Structures:count()) {
+        
+        # increase client yield stores
+        for(I=1,Clients) {
+            local Client = Shared["Client"+I, table]
+            Client["Scrap",number] = Client["Scrap",number] + Client["ScrapInc", number]
+            Client["Evolution",number] = Client["Evolution",number] + Client["EvolutionInc", number]
+        }
+        
+        setTurnLoadingHoloAlpha(0)
+        
+        promptNewTurn()
+        
+        MapBase:soundPlay(1, 2, "ui/xp_levelup.wav")
+        
+        return 1
+    }
+    
+    local Structure = Structures[Keys[Index, number], table]
+    
+    local Client = Shared["Client"+Structure["ClientIndex",number], table]
+    
+    local Type = Structure["Name",string]
+    
+    switch(Type) {
+        case "City",
+            updateCityTurn(Structure)
+            
+            local Yields = Structure["Yields",table]
+            
+            Client["ScrapInc", number] = Client["ScrapInc", number] + Yields["Scrap", number]
+            Client["EvolutionInc", number] = Client["EvolutionInc", number] + Yields["Evolution", number]
+            
+            #
+            # Citadel win condition
+            if(Structure["HasCitadel",number]) {
+                # blah
+            }
+        break
+        case "Outpost",
+            Client["ScrapInc", number] = Client["ScrapInc", number] + 3 + (Structure["ClientIndex",number]:getModifier("RuinsScrapYield")-1)
+        break
+        case "Nest",
+            if(Shared["TotalAIUnits",number] > 10) { Structure["LastSpawn", number] = Shared["Turn",number] return 0 }
+        
+            if(Shared["Turn",number] - Structure["LastSpawn", number] > randint(8, 22)) {
+                spawnUnit("Antlions", 0, Structure:getPos())
+                Structure["LastSpawn", number] = Shared["Turn",number] + randint(1,5)
+            }
+        break
+    }
+    
+    
+    
+    return 0
+}
+

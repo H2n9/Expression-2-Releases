@@ -1,0 +1,201 @@
+@name H2CivShared Map
+@inputs 
+@outputs 
+@persist GeneratorSettings:table 
+@trigger 
+
+#GeneratorSettings = table("Width"=17, "Height"=20, "GridScale"=8)
+GeneratorSettings = table("Width"=35, "Height"=40, "GridScale"=4)
+#GeneratorSettings = table("Width"=46, "Height"=54, "GridScale"=3)
+#GeneratorSettings = table("Width"=35*2, "Height"=40*2, "GridScale"=2)
+
+##
+
+function number cellCoordsToIndex(Vec2:vector2) {
+    # +1 is because table indexes start at 1 whereas we use coords start from 0
+    return (Vec2:x() + Vec2:y()*GeneratorSettings["Width",number]) + 1
+}
+
+function vector2 worldToCellCoords(Pos:vector) {
+    local Width = GeneratorSettings["Width",number]
+    local Height = GeneratorSettings["Height",number]
+    local Scale = GeneratorSettings["GridScale",number]
+    
+    local Offset = Pos - MapBase:pos()
+    
+    local Y = Offset:y() / (Height*9*Scale) * Height 
+    local Off = (Y%2 - 0.5)/2
+    local X = Offset:x() / (Width*6*sqrt(3)*Scale) * Width + Off
+    
+    return vec2( floor( X-Off +(Width)/2),floor(-Y+Height/2))
+}
+
+function vector cellCoordsToWorld(Vec2:vector2) {
+    local X = floor(Vec2:x())
+    local Y = floor(Vec2:y())
+    
+    local Width = GeneratorSettings["Width",number]
+    local Height = GeneratorSettings["Height",number]
+    local Scale = GeneratorSettings["GridScale",number]
+    local Off = (Y%2 - 0.5)/2
+    
+    return MapBase:pos() + (MapBase:forward() * (X + Off - ((Width-1)/2))*(6*sqrt(3)*Scale)) + (MapBase:right() * ( Y - ((Height-1)/2))*(9*Scale))
+}
+
+function vector table:getTileTop() {
+    local Pos = cellCoordsToWorld(vec2( This["X", number], This["Y", number] ))
+    Pos += MapBase:up() * (((max(This["H",number],0) * 6) + 6*This["HeightScale",number]*(1-This["NoDraw",number]) + 3) + (This["Name",string]:find("Hill"))*0.39)
+    return Pos
+}
+
+
+# cube funcs
+function vector2 cubeToCellCoords(Cube:vector) {
+    local Col = Cube:x() + (Cube:z() - (bAnd(Cube:z(),1))) / 2
+    local Row = Cube:z()
+    return vec2(Col, Row)
+}
+
+function vector cellCoordsToCube(Vec2:vector2) {
+    local X = Vec2:x() - (Vec2:y() - (bAnd(Vec2:y(),1))) / 2
+    local Z = Vec2:y()
+    local Y = -X-Z
+    return vec(X, Y, Z)
+}
+
+# takes cube coords
+function number cellDistance(Cube1:vector, Cube2:vector) {
+    return floor(Cube1:distance(Cube2))
+}
+
+function number cellDistance(A:vector2, B:vector2) {
+    return floor(cellCoordsToCube(A):distance(cellCoordsToCube(B)))
+}
+
+#
+
+function array getNeighbourCoords(Vec2:vector2) {
+    local Cube = cellCoordsToCube(Vec2)
+    
+    local Array = array( cubeToCellCoords( Cube+vec(1,-1,0) ), cubeToCellCoords( Cube+vec(1,0,-1) ), 
+                         cubeToCellCoords( Cube+vec(0,1,-1) ), cubeToCellCoords( Cube+vec(-1,1,0) ),
+                         cubeToCellCoords( Cube+vec(-1,0,1) ), cubeToCellCoords( Cube+vec(0,-1,1) ))
+                        
+    return Array
+}
+
+function array getCellsInRange(Center:vector2, Range) {
+    local Array = array()
+    local Cube = cellCoordsToCube(Center)
+    
+    for(X=-Range, Range) {
+        for(Y=max(-Range,-X-Range),min(Range, -X+Range)) {
+            Z = -X-Y
+            Array:pushVector2(cubeToCellCoords(Cube + vec(X,Y,Z)))
+        }
+    }
+    return Array
+}
+
+#
+
+function awaitPathTo(StartPos:vector2, EndPos:vector2, MoveType:string, Callback:string) {
+    addSubprocess("computeGraph", table("StartPos"=StartPos, "EndPos"=EndPos, "MoveType"=MoveType, "DummyUnit"=table("MoveType"=MoveType, "ClientIndex"=1), "Callback"=Callback, "Frontier"=table(array(StartPos,0)), "CameFrom"=table(), "Costs"=table()), table("Rate"=1))
+}
+
+function awaitComputeGraph(StartPos:vector2, EndPos:vector2, MoveType:string, Callback:string) {
+    addSubprocess("computeGraph", table("StartPos"=StartPos, "EndPos"=EndPos, "MoveType"=MoveType, "DummyUnit"=table("MoveType"=MoveType, "ClientIndex"=1), "GraphCallback"=Callback, "Frontier"=table( array(StartPos,0) ), "CameFrom"=table(), "Costs"=table()), table("Rate"=1))
+}
+
+function awaitComputePath(StartPos:vector2, CurrentPos:vector2, CameFrom:table, Callback:string) {
+    addSubprocess("computePath", table("CameFrom"=CameFrom, "StartPos"=StartPos, "Path"=array(), "CurrentPos"=CurrentPos, "Callback"=Callback))
+}
+
+function table:priorityPush(Next:vector2, Priority) {
+    for(I=1,This:count()) {
+        if(Priority <= This[I,array][2,number]) {
+            This:insertArray(I, array(Next, Priority))
+            return
+        }
+    }
+    This:pushArray(array(Next, Priority))
+}
+
+function number computeGraph(Index, Params:table) {
+    local Frontier = Params["Frontier",table]
+    local CameFrom = Params["CameFrom",table]
+    local Costs = Params["Costs",table]
+    
+    if(Frontier:count() > 0 && Index < 50) {
+        local CurrentPos = Frontier[1,array][1,vector2]
+        Frontier:shift()
+        
+        if(CurrentPos == Params["EndPos",vector2]) {
+            Frontier:clear()
+            return 0    
+        } 
+        
+        local Neighbours = getNeighbourCoords(CurrentPos)
+        
+        for(I=1,Neighbours:count()) {
+            local NextPos = Neighbours[I,vector2]
+            local Next = cellCoordsToIndex(NextPos)
+            
+            local MoveCost = "getMovementCost"(Params["DummyUnit",table], NextPos)[number]
+            
+            if(MoveCost == -1) { continue }
+            if(Costs:exists(Next)) { continue }
+            
+            local NewCost = Costs[cellCoordsToIndex(CurrentPos), number] + MoveCost
+            
+            if(Costs[Next,number] == 0) { Costs[Next,number] = 99 }
+            if(NewCost < Costs[Next,number]) {
+                Costs[Next,number] = NewCost
+                Frontier:priorityPush(NextPos, NewCost)
+                CameFrom[Next, vector2] = CurrentPos
+            }
+        }
+        
+    } else {
+        ##
+        if(Params:exists("GraphCallback")) {
+            Params["GraphCallback",string](CameFrom)
+        } else {
+            addSubprocess("computePath", table("CameFrom"=CameFrom, "StartPos"=Params["StartPos",vector2], "Path"=array(), "CurrentPos"=Params["EndPos",vector2], "Callback"=Params["Callback",string]))
+        }
+        
+        return 1
+    }
+    
+    return 0
+}
+
+function number computePath(Index, Params:table) {
+    local CameFrom = Params["CameFrom",table]
+    local Path = Params["Path",array]
+    
+    local CurrentPos = Params["CurrentPos",vector2]
+    
+    if(Index > 10) {
+        Params["Callback",string](Path)
+        return 1
+    }
+    
+    if(CurrentPos != Params["StartPos",vector2]) {
+        if(!CameFrom:exists(cellCoordsToIndex(CurrentPos))) { Params["Callback",string](Path) return 1 }
+        
+        Path:pushVector2(CurrentPos)
+        
+        Params["CurrentPos",vector2] = CameFrom[cellCoordsToIndex(CurrentPos),vector2]
+        
+        return 0
+    } else {
+        Path:pushVector2(Params["StartPos",vector2])
+    
+        Params["Callback",string](Path)
+        
+        return 1    
+    }
+    
+    return 0
+}

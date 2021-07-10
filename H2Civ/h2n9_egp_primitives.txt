@@ -1,0 +1,175 @@
+@name H2n9_EGP_Primitives
+
+## egpAdvBox ##
+
+function string wirelink:egpAdvBox(Key:string, Pos:vector2, Size:vector2, Flags:table) {
+    return This:createObject(Key, "egpBox", table("Pos"=Pos, "Size"=Size):merge(Flags))    
+}
+
+# Keyless
+
+function string wirelink:egpAdvBox(Pos:vector2, Size:vector2, Flags:table) {
+    return This:createObject("egpBox", table("Pos"=Pos, "Size"=Size):merge(Flags))    
+}
+
+## ##
+
+## egpAdvBoxOutline ##
+
+function string wirelink:egpAdvBoxOutline(Key:string, Pos:vector2, Size:vector2, Flags:table) {
+    return This:createObject(Key, "egpBoxOutline", table("Pos"=Pos, "Size"=Size):merge(Flags))    
+}
+
+# Keyless
+
+function string wirelink:egpAdvBoxOutline(Pos:vector2, Size:vector2, Flags:table) {
+    return This:createObject("egpBoxOutline", table("Pos"=Pos, "Size"=Size):merge(Flags))    
+}
+
+## ##
+
+## egpAdvRoundedBox ##
+
+function string wirelink:egpAdvRoundedBox(Key:string, Pos:vector2, Size:vector2, Flags:table) {
+    return This:createObject(Key, "egpRoundedBox", table("Pos"=Pos, "Size"=Size):merge(Flags))    
+}
+
+# Keyless
+
+function string wirelink:egpAdvRoundedBox(Pos:vector2, Size:vector2, Flags:table) {
+    return This:createObject("egpRoundedBox", table("Pos"=Pos, "Size"=Size):merge(Flags))    
+}
+
+## ##
+
+## egpAdvText
+
+function string wirelink:egpAdvText(Key:string, Text:string, Pos:vector2, Flags:table) {
+    return This:createObject(Key, "egpText", table("Text"=Text, "Pos"=Pos):merge(Flags))    
+}
+
+#keyless
+
+function string wirelink:egpAdvText(Text:string, Pos:vector2, Flags:table) {
+    return This:createObject("egpText", table("Text"=Text, "Pos"=Pos):merge(Flags))    
+}
+
+## ##
+
+function string wirelink:egpAdvTextLayout(Key:string, Text:string, Pos:vector2, Size:vector2, Flags:table) {
+    return This:createObject(Key, "egpTextLayout", table("Text"=Text, "Pos"=Pos-Size/2, "Size"=Size):merge(Flags)) 
+}
+
+
+# Keyless
+
+function string wirelink:egpAdvTextLayout(Text:string, Pos:vector2, Size:vector2, Flags:table) {
+    return This:createObject("egpTextLayout", table("Text"=Text, "Pos"=Pos-Size/2, "Size"=Size):merge(Flags)) 
+}
+
+## ##
+
+## egpAdvLine ##
+
+function string wirelink:egpAdvLine(Key:string, Pos1:vector2, Pos2:vector2, Flags:table) {
+    return This:createObject(Key, "egpLine", table("Pos"=Pos1, "Points"=array(Pos1, Pos2)):merge(Flags))
+}
+
+function string wirelink:egpAdvLine(Key:string, Pos:vector2, Points:array, Flags:table) {
+    return This:createObject(Key, "egpLine", table("Pos"=Pos, "Points"=Points):merge(Flags))
+}
+
+# Keyless
+
+function string wirelink:egpAdvLine(Pos1:vector2, Pos2:vector2, Flags:table) {
+    return This:createObject("egpLine", table("Pos"=Pos1, "Points"=array(Pos1, Pos2)):merge(Flags))
+}
+
+#
+
+function string wirelink:egpAdvLine(Pos:vector2, Points:array, Flags:table) {
+    return This:createObject("egpLine", table("Pos"=Pos, "Points"=Points):merge(Flags))
+}
+
+## ##
+
+## egpAdvPoly ##
+
+function string wirelink:egpAdvPoly(Key:string, Pos:vector2, Points:array, Flags:table) {
+    return This:createObject(Key, "egpPoly", table("Pos"=Pos, "Points"=Points):merge(Flags))
+}
+
+# Keyless
+
+function string wirelink:egpAdvPoly(Pos:vector2, Points:array, Flags:table) {
+    return This:createObject("egpPoly", table("Pos"=Pos, "Points"=Points):merge(Flags))
+}
+
+## ##
+
+## egpAdvTriangle ##
+
+function string wirelink:egpAdvTriangle(Key:string, Pos1:vector2, Pos2:vector2, Pos3:vector2, Flags:table) {
+    return This:createObject(Key, "egpTriangle", table("Pos"=Pos1, "Points"=array(Pos1, Pos2, Pos3)):merge(Flags))
+}
+
+# Keyless
+
+function string wirelink:egpAdvTriangle(Pos1:vector2, Pos2:vector2, Pos3:vector2, Flags:table) {
+    return This:createObject("egpTriangle", table("Pos"=Pos1, "Points"=array(Pos1, Pos2, Pos3)):merge(Flags))
+}
+
+## ##
+
+## egpAdvCircle
+
+function string wirelink:egpAdvCircle(Key:string, Pos:vector2, Size:vector2, Flags:table) {
+    return This:createObject(Key, "egpCircle", table("Pos"=Pos, "Size"=Size):merge(Flags))
+}
+
+# Keyless
+
+function string wirelink:egpAdvCircle(Pos:vector2, Size:vector2, Flags:table) {
+    return This:createObject("egpCircle", table("Pos"=Pos, "Size"=Size):merge(Flags))
+}
+
+## egpAdvCircleOutline
+
+function string wirelink:egpAdvCircleOutline(Key:string, Pos:vector2, Size:vector2, Flags:table) {
+    return This:createObject(Key, "egpCircleOutline", table("Pos"=Pos, "Size"=Size):merge(Flags))
+}
+
+# Keyless
+
+function string wirelink:egpAdvCircleOutline(Pos:vector2, Size:vector2, Flags:table) {
+    return This:createObject("egpCircleOutline", table("Pos"=Pos, "Size"=Size):merge(Flags))
+}
+
+##
+
+## egpAdvWedge
+
+function string wirelink:egpAdvWedge(Key:string, Pos:vector2, Size:vector2, Flags:table) {
+    return This:createObject(Key, "egpWedge", table("Pos"=Pos, "Size"=Size):merge(Flags))
+}
+
+# Keyless
+
+function string wirelink:egpAdvWedge(Pos:vector2, Size:vector2, Flags:table) {
+    return This:createObject("egpWedge", table("Pos"=Pos, "Size"=Size):merge(Flags))
+}
+
+
+## egpAdv3dTracker
+
+function string wirelink:egpAdv3DTracker(Key:string, Pos:vector) {
+    return This:createObject(Key, "egp3DTracker", table("Pos3"=Pos))
+}
+
+# Keyless
+
+function string wirelink:egpAdv3DTracker(Pos:vector) {
+    return This:createObject("egp3DTracker", table("Pos3"=Pos))
+}
+
+##

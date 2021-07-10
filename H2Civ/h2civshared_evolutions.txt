@@ -1,0 +1,102 @@
+@name H2CivShared Evolutions
+@inputs 
+@outputs 
+@persist Evolutions:table Progressions:table ProgressionsTierLookup:table
+@trigger 
+
+Evolutions = table()
+
+#
+
+CombineEvolutions = table()
+
+CombineEvolutions["Establishment", table] = table("Name"="Establishment", "Description"="Settlers cost 40% less scrap.", "Cost"=10, "ExecuteFunction"="establishmentEvo")
+
+CombineEvolutions["Expansion", table] = table("Name"="Expansion", "Description"="Grants a free settler and builder.", "Cost"=14, "ExecuteFunction"="expansionEvo")
+
+CombineEvolutions["Enslavement", table] = table("Name"="Enslavement", "Description"="Refugee tiles have a 20% chance to provide an additional free builder.\nBuilders have +1 charges.", "Cost"=20, "ExecuteFunction"="enslavementEvo")
+CombineEvolutions["Indoctrination", table] = table("Name"="Indoctrination", "Description"="+1 Production from every citizen.\n-1 Evo per turn.", "Cost"=30, "ExecuteFunction"="indoctrinationEvo")
+
+CombineEvolutions["SuperiorEngineering", table] = table("Name"="Superior Engineering", "Description"="+1 Production from every citizen.", "Cost"=50, "ExecuteFunction"="superiorEngEvo")
+CombineEvolutions["Propaganda", table] = table("Name"="Propaganda", "Description"="Additional +10% combat strength adjacency bonus.\nCaptured cities preserve +1 population.\n-3 Evo per turn.", "Cost"=50, "ExecuteFunction"="propagandaEvo")
+
+CombineEvolutions["Governance", table] = table("Name"="Governance", "Description"="Allows construction of a Local Government building ( +1 Evo from every citizen, -2 Scrap )", "Cost"=50, "ExecuteFunction"="governanceEvo")
+
+CombineEvolutions["Subjugate", table] = table("Name"="Subjugate", "Description"="Unlocks construction of the Citadel.", "Cost"=120, "ExecuteFunction"="subjugateEvo")
+
+#
+
+RebelEvolutions = table()
+
+RebelEvolutions["Otherworlders", table] = table("Name"="Otherworlders", "Description"="Defeating enemy alien units provides scrap.", "Cost"=12, "ExecuteFunction"="otherworldersEvo")
+
+RebelEvolutions["RebelMomentum", table] = table("Name"="Momentum", "Description"="New cities start with +1 population.\nGrants a free settler.", "Cost"=18, "ExecuteFunction"="rebelMomentumEvo")
+
+RebelEvolutions["HomeAdvantage", table] = table("Name"="Home Advantage", "Description"="+15% Combat Strength in rough terrain.\n+15% Combat Strength in friendly territory.", "Cost"=24, "ExecuteFunction"="homeAdvantageEvo")
+RebelEvolutions["Outnumbered", table] = table("Name"="Outnumbered", "Description"="Negate enemy adjacency bonus.", "Cost"=26, "ExecuteFunction"="outnumberedEvo")
+
+RebelEvolutions["Individuality", table] = table("Name"="Individuality", "Description"="+1 Evo from every citizen.", "Cost"=60, "ExecuteFunction"="individualityEvo")
+RebelEvolutions["PocketCommunities", table] = table("Name"="Pocket Communities", "Description"="+1 Production from Farms.", "Cost"=45, "ExecuteFunction"="pocketCommunitiesEvo")
+
+RebelEvolutions["Extermination", table] = table("Name"="Extermination", "Description"="Allows military engineers to clear out alien nests.", "Cost"=60, "ExecuteFunction"="exterminationEvo")
+
+RebelEvolutions["ScavengerSquads", table] = table("Name"="Scavenger Squads", "Description"="+1 Scrap from desert tiles.\n+1 Scrap from snow tiles.\n+1 Scrap from controlled ruins.", "Cost"=90, "ExecuteFunction"="scavengerSquadsEvo")
+
+RebelEvolutions["RenewedAgriculture", table] = table("Name"="Renewed Agriculture", "Description"="+1 Food from Farms.\nFarms can be built on Wasteland tiles.", "Cost"=70, "ExecuteFunction"="renewedAgricultureEvo")
+
+RebelEvolutions["Utopia", table] = table("Name"="Utopia", "Description"="Buildings cost 50% less Scrap", "Cost"=100, "ExecuteFunction"="utopiaEvo")
+RebelEvolutions["Homeland", table] = table("Name"="Homeland", "Description"="Combat units cost 80% less Scrap.\n-3 Evo per turn", "Cost"=100, "ExecuteFunction"="homelandEvo")
+
+#
+
+Evolutions["Combine", table] = CombineEvolutions
+Evolutions["Rebel",table] = RebelEvolutions
+
+#
+
+Progressions = table()
+
+#
+
+CombineProgression = table( 
+array( "Establishment" ),
+array( "Expansion" ),
+array( "Enslavement", "Indoctrination" ),
+array( "SuperiorEngineering", "Propaganda" ),
+array( "Governance" ),
+array( "Subjugate" )
+)
+
+RebelProgression = table(
+array( "Otherworlders" ),
+array( "RebelMomentum" ),
+array( "HomeAdvantage", "Outnumbered" ),
+array( "Individuality", "PocketCommunities" ),
+array( "Extermination" ), 
+array( "ScavengerSquads" ),
+array( "RenewedAgriculture" ),
+array( "Utopia", "Homeland" )
+)
+
+ProgressionsTierLookup = table(
+"Establishment"=1,
+"Expansion"=2,
+"Enslavement"=3, "Indoctrination"=3, 
+"SuperiorEngineering"=4, "Propaganda"=4, 
+"Governance"=5,
+"Subjugate"=6,
+
+"Otherworlders"=1,
+"RebelMomentum"=2,
+"HomeAdvantage"=3, "Outnumbered"=3,
+"Individuality"=4, "PocketCommunities"=4,
+"Extermination"=5,
+"ScavengerSquads"=6,
+"RenewedAgriculture"=7,
+"Utopia"=8, "Homeland"=8
+)
+
+#
+
+Progressions["Combine", table] = CombineProgression
+Progressions["Rebel", table] = RebelProgression

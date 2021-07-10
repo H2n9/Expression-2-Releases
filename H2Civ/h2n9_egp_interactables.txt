@@ -1,0 +1,36 @@
+@name H2n9_EGP_Interactables
+
+function wirelink:updateInteractions(Event:table) {
+    if(!Event["Click",number]) {return}
+    addSubprocess("updateInteractablesProcess", table("EGP"=This, "Event"=Event))
+}
+
+#
+
+function number updateInteractablesProcess(Index, Params:table) {
+    local EGP = Params["EGP",wirelink]
+    local Interactables = EGPInteractables[EGP:id(), table]
+    local Event = Params["Event",table]
+    
+    if(Index > Interactables:count()) {
+        return 1
+    }
+    
+    local Object = EGP:getObject(Interactables[Index, string])
+    
+    if(!Object["Spawned",number]) { return 0 }
+    
+    if(Event["Click",number]) {
+        local EventPos = Event["ClickPos",vector2]
+        
+        local ObjectPos = Object["Pos",vector2]
+        local ObjectHalfSize = Object["Size",vector2]/2
+        
+        if(inrange(EventPos, ObjectPos-ObjectHalfSize, ObjectPos+ObjectHalfSize)) {
+            Event["Object",string] = Object["Key",string]
+            Object["OnClick",string](EGP, Event)
+        }
+    }
+    
+    return 0
+}

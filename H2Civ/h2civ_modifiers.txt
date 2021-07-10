@@ -1,0 +1,146 @@
+@name H2Civ Modifiers
+@inputs 
+@outputs 
+@persist Modifiers:table
+@trigger 
+
+#[
+
+Global Modifiers
+
+- NewCityPop
+- PopProdYield
+- AdditionalBuilderCharges
+- RefugeesGrantBuilders
+- NegateEnemyAdjacency
+
+- AliensProvideScrap
+
+- SettlerScrapCost
+
+- [Structure]ProdYield
+
+- [Tile]ProdYield
+- [Tile]ScrapYield
+- [Tile]FoodYield
+- [Feature]ProdYield
+- [Feature]ScrapYield
+- [Feature]FoodYield
+- [Structure]ProdYield
+- [Structure]ScrapYield
+- [Structure]FoodYield
+- RuinsScrapYield
+
+City Modifiers
+
+- CityEvoYield
+- PopEvoYield
+- CityScrapYield
+- CityProdYield
+- CityFoodYield
+- GrowthCost
+- NewCombatStrength
+- NewCombatStrengthMult
+- CombatUnitProdCost
+- PopProdYield
+
+- [Tile]ProdYield
+- [Tile]ScrapYield
+- [Tile]FoodYield
+- [Feature]ProdYield
+- [Feature]ScrapYield
+- [Feature]FoodYield
+- [Structure]ProdYield
+- [Structure]ScrapYield
+- [Structure]FoodYield
+
+]#
+
+
+
+function table number:playerMods() {
+    local Client = Shared["Client"+This, table]
+    if(!Client:exists("Modifiers")) { Client["Modifiers", table] = table() } 
+    return Client["Modifiers", table]
+}
+
+function number:setModifier(Key:string, Value) {
+    local Ply = This:playerMods()
+    Ply[Key,number] = Value    
+}
+
+function number:multModifier(Key:string, Value) {
+    local Ply = This:playerMods()
+    if(!Ply:exists(Key)) { Ply[Key,number] = 1 }
+    
+    Ply[Key,number] = Ply[Key,number] * Value
+}
+
+function number:addModifier(Key:string, Value) {
+    local Ply = This:playerMods()
+    if(!Ply:exists(Key)) { Ply[Key,number] = 1 }
+    
+    Ply[Key,number] = Ply[Key,number] + Value
+}
+
+function number number:getModifier(Key:string) {
+    local Ply = This:playerMods()
+    if(!Ply:exists(Key)) { return 1 }
+    return Ply[Key,number]
+}
+
+function number:addYieldModifier(Key:string, Value) {
+    local Ply = This:playerMods()
+    if(!Ply:exists("YieldModifiers")) { Ply["YieldModifiers",table] = table() }
+    local Yields = Ply["YieldModifiers",table]
+    
+    Yields[Key,number] = Yields[Key,number] + Value
+}
+
+#
+
+function table table:cityMods() {
+    if(!This:exists("Modifiers")) { This["Modifiers", table] = table() }
+    return This["Modifiers",table]
+}
+
+function table:setModifier(Key:string, Value) {
+    local City = This:cityMods()
+    City[Key,number] = Value    
+}
+
+function table:multModifier(Key:string, Value) {
+    local City = This:cityMods()
+    if(!City:exists(Key)) { City[Key,number] = 1 }
+    
+    City[Key,number] = City[Key,number] * Value
+}
+
+function table:addModifier(Key:string, Value) {
+    local City = This:cityMods()
+    if(!City:exists(Key)) { City[Key,number] = 1 }
+    
+    City[Key,number] = City[Key,number] + Value
+}
+
+function number table:getModifier(Key:string) {
+    local City = This:cityMods()
+    if(!City:exists(Key)) { return 1 }
+    return City[Key,number]
+}
+
+function table:setYieldModifier(Key:string, Value) {
+    local City = This:cityMods()
+    if(!City:exists("CityYieldModifiers")) { City["CityYieldModifiers",table] = table() }
+    local Yields = City["CityYieldModifiers",table]
+    
+    Yields[Key,number] = Value
+}
+
+function table:addYieldModifier(Key:string, Value) {
+    local City = This:cityMods()
+    if(!City:exists("CityYieldModifiers")) { City["CityYieldModifiers",table] = table() }
+    local Yields = City["CityYieldModifiers",table]
+    
+    Yields[Key,number] = Yields[Key,number] + Value
+}

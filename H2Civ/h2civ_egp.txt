@@ -1,0 +1,12 @@
+@name H2Civ EGP
+@inputs EGP:wirelink
+@outputs 
+@persist 
+@trigger 
+@autoupdate
+
+function initialiseEGP() {
+    registerEGP(EGP)
+    
+    
+}

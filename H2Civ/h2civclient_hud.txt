@@ -1,0 +1,367 @@
+@name H2CivClient HUD
+@inputs HUD:wirelink
+@outputs 
+@persist PlayerCell:vector2 LastPlayerCellUpdate PLAYER_CELL_UPDATE_DELAY PlayerCellCities:table
+@persist LastHoverCoord HoverTrackerActive AttackTrackerActive LastAttackCoord
+@trigger 
+
+PLAYER_CELL_UPDATE_DELAY = 0.5
+
+if(HUD) {
+    listen("SetPlayer", "initialiseHUD")
+    listen("PlayerUpdate", "updateHUD")
+    listen("SelectionChanged", "updateHUDSelected")
+    listen("NotificationUpdate", "updateNotificationsHUD")
+}
+
+function string wirelink:egpGenericTracker(Key:string, Pos:vector) {
+    local Tracker = This:egpAdv3DTracker(Key, Pos)
+    
+    local Background = This:egpAdvRoundedBox(Key+"_Box", vec2(0,0), vec2(12,3), table("Color"=vec(), "Alpha"=230, "Radius"=8, "Parent"=Tracker))
+    local HealthBar = This:egpAdvBox(Key+"_HealthBar", vec2(0,-1), vec2(11.5, 0.5), table("Color"=vec(0,200,0), "Parent"=Background))
+    local Name = This:egpAdvTextLayout(Key+"_Name", "LongerUnitName", vec2(0.25,-0.125), vec2(11,2), table("HAlign"=0, "VAlign"=1, "Font"="Trebuchet", "FontSize"=28, "Parent"=Background))
+    local Status = This:egpAdvTextLayout(Key+"_Status", "0/2 Movement", vec2(0,0.75), vec2(11,1), table("HAlign"=1, "VAlign"=1, "Font"="Trebuchet", "FontSize"=22, "Parent"=Background))
+    
+    return This:assignChildren(Tracker, array(Name, HealthBar, Background, Status))
+}
+
+function wirelink:updateUnitTracker(Key:string, Pos:vector, Unit:table) {
+    HUD:setFlag(Key, "Pos3", Pos)
+    HUD:setFlag(Key+"_Name", "Text", Unit["Name",string])
+    HUD:setFlag(Key+"_HealthBar", "Alpha", 255)
+    
+    HUD:setFlag(Key+"_HealthBar", "Pos", vec2( -11.5/2 * (100-Unit["Health",number])/100 ,-1))
+    HUD:setFlag(Key+"_HealthBar", "Size", vec2( 11.5 * Unit["Health",number]/100 ,0.5))
+    HUD:setFlag(Key+"_HealthBar", "Color", mix(vec(0,200,0), vec(200,0,0), Unit["Health",number]/100))
+    
+    HUD:setFlag(Key+"_Box", "Alpha", 230)
+    HUD:setFlag(Key+"_Box", "Color", PLAYER_COLORS[Unit["ClientIndex", number], vector]*0.6)
+    
+    HUD:setFlag(Key+"_Status", "Text", Unit["Movement",number]+"/"+Unit["MaxMovement",number] + " Movement")
+}
+
+function wirelink:updateStructureTracker(Key:string, Pos:vector, Stucture:table) {
+    HUD:setFlag(Key, "Pos3", Pos)
+    HUD:setFlag(Key+"_Name", "Text", Stucture["Name",string])
+    
+    if(Stucture:exists("Health")) {
+        HUD:setFlag(Key+"_HealthBar", "Alpha", 255)
+        
+        HUD:setFlag(Key+"_HealthBar", "Pos", vec2( -11.5/2 * (100-Stucture["Health",number])/100 ,-1))
+        HUD:setFlag(Key+"_HealthBar", "Size", vec2( 11.5 * Stucture["Health",number]/100 ,0.5))
+        HUD:setFlag(Key+"_HealthBar", "Color", mix(vec(0,200,0), vec(200,0,0), Stucture["Health",number]/100))
+    } else {
+        HUD:setFlag(Key+"_HealthBar", "Alpha", 0)
+    }
+    HUD:setFlag(Key+"_Box", "Alpha", 230)
+    HUD:setFlag(Key+"_Box", "Color", PLAYER_COLORS[Stucture["ClientIndex", number], vector]*0.6)
+    
+    HUD:setFlag(Key+"_Status", "Text", " ")
+}
+
+function wirelink:hideGenericTracker(Key:string) {
+    HUD:setFlag(Key+"_Name", "Text", " ")
+    HUD:setFlag(Key+"_HealthBar", "Alpha", 0)
+    HUD:setFlag(Key+"_Box", "Alpha", 0)
+    HUD:setFlag(Key+"_Status", "Text", " ")
+}
+
+function string wirelink:egpAttackTracker(Key:string, Pos:vector) {
+    local Tracker = This:egpAdv3DTracker(Key, Pos)
+    
+    local Background = This:egpAdvRoundedBox(Key+"_Box", vec2(0,0), vec2(16,6), table("Theme"="D", "Alpha"=230, "Radius"=8, "Parent"=Tracker))
+    
+    local Left = This:egpAdvTextLayout(Key+"_Left", "Attacker - 32str", vec2(0,0), vec2(15,5.5), table("HAlign"=0, "VAlign"=0, "Font"="Trebuchet", "FontSize"=24, "Parent"=Background))
+    local LeftDesc = This:egpAdvTextLayout(Key+"_LeftDesc", "djwaodwoidj\nfjwoisafjpioaw", vec2(0,1), vec2(14.25,5), table("HAlign"=0, "VAlign"=0, "Font"="Trebuchet", "FontSize"=20, "Parent"=Background))
+    local Right = This:egpAdvTextLayout(Key+"_Right", "32str - Defender", vec2(0,0), vec2(15,5.5), table("HAlign"=2, "VAlign"=0, "Font"="Trebuchet", "FontSize"=24, "Parent"=Background))
+    local RightDesc = This:egpAdvTextLayout(Key+"_RightDesc", "djwaodwoidj\nfjwoisafjpioaw", vec2(0,1), vec2(14.25,5), table("HAlign"=2, "VAlign"=0, "Font"="Trebuchet", "FontSize"=20, "Parent"=Background))
+    
+    return This:assignChildren(Tracker, array(Left, LeftDesc, Right, RightDesc, Background))
+}
+
+function wirelink:updateAttackTracker(Key:string, Pos:vector, Attacker:table, Defender:table) {
+    HUD:setFlag(Key, "Pos3", Pos)
+    
+    HUD:setFlag(Key+"_Box", "Alpha", 230)
+    
+    local AttackerStrength = Attacker:getAttackerStrength(Defender)
+    local DefenderStrength = Defender:getDefenderStrength(Attacker)
+    
+    HUD:setFlag(Key+"_Left", "Text", "Attacker - "+ round(AttackerStrength["Strength",number]) +"str")
+    HUD:setFlag(Key+"_Right", "Text", round(DefenderStrength["Strength",number]) + "str - Defender")
+    
+    local AttackerStr = ""
+    for(I=1,ATTACKER_RESULT_KEYS:count()) {
+        local RKey = ATTACKER_RESULT_KEYS[I,string]
+        
+        local Bonus = AttackerStrength[RKey, number]
+        
+        if(Bonus == 1) { continue } 
+        
+        if(Bonus > 1) {
+            AttackerStr += RKey + " > +" + round((Bonus-1)*100) + "%\n"
+        } else {
+            AttackerStr += RKey + " > -" + round((1-Bonus)*100) + "%\n"
+        }
+    }
+
+    local DefenderStr = ""
+    for(I=1,DEFENDER_RESULT_KEYS:count()) {
+        local RKey = DEFENDER_RESULT_KEYS[I,string]
+        
+        local Bonus = DefenderStrength[RKey, number]
+        
+        if(Bonus == 1) { continue } 
+        
+        if(Bonus > 1) {
+            DefenderStr += "+" + round((Bonus-1)*100) + "%" + " < " + RKey + "\n"
+        } else {
+            DefenderStr += "-" +  round((1-Bonus)*100) + "%" + " < " + RKey + "\n"
+        }
+    }
+    
+    HUD:setFlag(Key+"_LeftDesc", "Text", AttackerStr)
+    HUD:setFlag(Key+"_RightDesc", "Text", DefenderStr)
+}
+
+
+function wirelink:hideAttackTracker(Key:string) {
+    HUD:setFlag(Key+"_Left", "Text", " ")
+    HUD:setFlag(Key+"_LeftDesc", "Text", " ")
+    HUD:setFlag(Key+"_Box", "Alpha", 0)
+    HUD:setFlag(Key+"_RightDesc", "Text", " ")
+    HUD:setFlag(Key+"_Right", "Text", " ")
+}
+
+function string wirelink:egpCityTracker(Key:string, Pos:vector, City:table) {
+     local Tracker = This:egpAdv3DTracker(Key, Pos)
+    
+    local Background = This:egpAdvRoundedBox(Key+"_Box", vec2(0,0), vec2(16,2), table("Color"=PLAYER_COLORS[City["ClientIndex",number], vector]*0.8, "Alpha"=180, "Radius"=16, "Parent"=Tracker))
+    local Name = This:egpAdvTextLayout(Key+"_Name", "A Random City", vec2(2,0), vec2(15,2), table("HAlign"=0, "VAlign"=1, "Font"="Trebuchet", "FontSize"=22, "Parent"=Background))
+    local Population = This:egpAdvTextLayout(Key+"_Population", "15", vec2(1,0), vec2(15,2), table("HAlign"=0, "VAlign"=1, "Font"="Trebuchet", "FontSize"=26, "Parent"=Background))
+    
+    return This:assignChildren(Tracker, array(Name, Population, Background))
+}
+
+function string wirelink:cityTrackerList(Key:string, Index, ShouldCreate) {
+    local Object = This:getList(Key)[Index,string]
+    
+    local City = PlayerCellCities[Index, table]
+    
+    if(ShouldCreate) {
+        Object = This:egpCityTracker(This:genKey(), Tiles[cellCoordsToIndex(City:getPos()), table]:getTileTop(), City)
+    } else {
+        local Children = This:getObjectChildren(Object)
+        
+        if(Index > PlayerCellCities:count()) {
+            This:setFlag(Object, "Pos3", vec())
+        } else {
+            This:setFlag(Object, "Pos3", Tiles[cellCoordsToIndex(City:getPos()), table]:getTileTop())
+            This:setFlag(Children[3,string], "Color", PLAYER_COLORS[City["ClientIndex",number], vector])
+        }
+    }
+        
+    return Object
+}
+
+function string wirelink:notificationEntry(Key:string, Pos:vector2, Size:vector2, Notif:string) {
+    local Box = This:egpAdvRoundedBox(Key, Pos, Size, table("Theme"="C", "Radius"=16, "Alpha"=250))
+    local Text = This:egpAdvTextLayout(Key+"_Text", Notif, Pos, Size-vec2(1,0), table("Theme"="E", "FontSize"=20, "Font"="Trebuchet", "Parent"=Box, "VAlign"=1))
+    return This:assignChildren(Box, array(Text))
+}
+
+function string wirelink:notificationList(Key:string, Index, ShouldCreate) {
+    local Object = This:getList(Key)[Index,string]
+
+    local Notification = Notifications[Index, table]
+
+    if(ShouldCreate) {
+        Object = This:notificationEntry(This:genKey(), vec2(118, 16-Index*1.5), vec2(18,1), Notification["Desc",string])
+    } else {
+        local Children = This:getObjectChildren(Object)
+        
+        This:setFlag(Children[1,string], "Text", Notification["Desc",string])
+    }
+        
+    return Object
+}
+
+function updateNotificationsHUD(Params:table) {
+    HUD:egpUpdateList("NotificationList", "notificationList", Notifications:count())
+}
+
+function initialiseHUD(Params:table) {
+    registerEGP(HUD)
+    
+    local ScreenSize = egpScrSize(owner())
+    local WidthScaler = 128/(ScreenSize:x()/512)
+    local H = 128 * ScreenSize:y()/ScreenSize:x()
+    local FontScaler = ScreenSize:y()/1600
+    
+    HUD:setScaling(vec2(0, WidthScaler), vec2(0, WidthScaler))
+    HUD:setFontScale(FontScaler)
+    
+    #[HUD:egpAdvRoundedBox(vec2(64, 1), vec2(20,1), table("Theme"="C", "Radius"=16, "Alpha"=250))
+    
+    HUD:egpEvolution(vec2(55, 1), vec2(0.375, 0.375))    
+    HUD:egpAdvTextLayout("EvolutionDisplay","0 (+0)", vec2(60, 1), vec2(8,2), table("VAlign"=1, "Font"="Trebuchet", "FontSize"=22, "Color"=vec(141, 66, 245)*0.65))
+    
+    HUD:egpScrap(vec2(61, 1), vec2(0.375, 0.375))
+    HUD:egpAdvTextLayout("ScrapDisplay","0 (+0)", vec2(66, 1), vec2(8,2), table("VAlign"=1, "Font"="Trebuchet", "FontSize"=22, "Color"=vec(184, 141, 105)*0.8))
+    
+    HUD:egpAdvTextLayout("TurnDisplay", "Turn 0", vec2(68.5, 1), vec2(8,2), table("VAlign"=1, "HAlign"=2, "Font"="Trebuchet", "FontSize"=22, "Theme"="F"))
+    ]#
+    
+    #
+    
+    HUD:egpAdvRoundedBox(vec2(120, 15.5), vec2(4,0.75), table("Theme"="D", "Radius"=12, "Alpha"=250))
+    HUD:egpAdvTextLayout("Highlight (+)", vec2(120, 15.5), vec2(4,1), table("VAlign"=1, "HAlign"=1, "Font"="Trebuchet", "FontSize"=16, "Theme"="F"))
+    
+    
+    HUD:egpAdvRoundedBox(vec2(124, 15.5), vec2(3,0.75), table("Theme"="D", "Radius"=12, "Alpha"=250))
+    HUD:egpAdvTextLayout("Dismiss (-)", vec2(124, 15.5), vec2(3,1), table("VAlign"=1, "HAlign"=1, "Font"="Trebuchet", "FontSize"=16, "Theme"="F"))
+    
+    HUD:egpList("NotificationList", "notificationList", 0)
+    
+    HUD:egpGenericTracker("HoverTracker", entity():pos())
+    HUD:egpAttackTracker("AttackTracker", entity():pos()+vec(70,0,0)) 
+    
+    #HUD:egpCityTracker("CityTracker", MapBase:pos(), table())
+    #HUD:egpList("CityTrackers", "cityTrackerList", 5)   
+}
+
+function forceUpdateHover(Index) {
+    if(Units:exists(Index)) {
+        local UnitAtCursor = Units[Index, table]
+        HUD:updateUnitTracker("HoverTracker", holoEntity(1):pos() + vec(0,0,24), UnitAtCursor)
+       
+        HoverTrackerActive = 1
+        return 
+    }
+    if(Structures:exists(Index)) {
+        local StructureAtCursor = Structures[Index, table]
+        HUD:updateStructureTracker("HoverTracker", holoEntity(1):pos() + vec(0,0,24), StructureAtCursor)
+        
+        HoverTrackerActive = 1
+        return
+    }
+    
+    if(HoverTrackerActive) {
+        HUD:hideGenericTracker("HoverTracker")
+        HoverTrackerActive = 0
+    }
+}
+
+function updateHover() {
+    local Index = cellCoordsToIndex(worldToCellCoords(Player:aimPos()))
+    
+    if(Index == LastHoverCoord) { return }
+    
+    forceUpdateHover(Index)
+    
+    LastHoverCoord = Index
+
+    if(AttackTrackerActive) {
+        HUD:hideAttackTracker("AttackTracker")
+        AttackTrackerActive = 0
+    }
+}
+
+function forceUpdateAttackHover(Index) {
+    if(Units:exists(Index)) {
+        local UnitAtCursor = Units[Index, table]
+        
+        if(UnitAtCursor["ClientIndex",number] == ClientIndex) { return } 
+        
+        HUD:updateAttackTracker("AttackTracker", holoEntity(1):pos() + vec(0,0,24), CurrentSelection, UnitAtCursor)
+        AttackTrackerActive = 1
+        return 
+    }
+    
+    if(AttackTrackerActive) {
+        HUD:hideAttackTracker("AttackTracker")
+        AttackTrackerActive = 0
+    }
+}
+
+function updateAttackHover() {
+    local Index = cellCoordsToIndex(worldToCellCoords(Player:aimPos()))
+    
+    if(Index == LastAttackCoord) { return }
+    
+    forceUpdateAttackHover(Index)
+    
+    LastAttackCoord = Index
+}
+
+function updateHUDSelected(Params:table) {
+    HUD:updateUnitTracker("HoverTracker", holoEntity(2):pos() + vec(0,0,24), CurrentSelection)
+}
+
+function updateDrawCityTrackers() {
+    local CellsInRange = getCellsInRange(PlayerCell, 4)
+        
+    local Cities = table()
+    
+    for(I=1,CellsInRange:count()) {
+        local Cell = CellsInRange[I,vector2]
+        
+        local Index = cellCoordsToIndex(Cell)    
+        
+        if(!Structures:exists(Index)) { continue }
+        
+        local Structure = Structures[Index, table]
+        
+        if(Structure["Name",string] == "City") {
+            Cities:pushTable(Structure)
+        }
+    }
+    
+    PlayerCellCities = Cities
+    
+    HUD:egpUpdateList("CityTrackers", "cityTrackerList", max(5, PlayerCellCities:count()))
+}
+
+function updatePlayerPos() { 
+    if(systime() - LastPlayerCellUpdate < PLAYER_CELL_UPDATE_DELAY) { return }
+    
+    local CurrentCell = worldToCellCoords(Player:pos())
+    
+    if(!inrange(CurrentCell, vec2(0,0), vec2(GeneratorSettings["Width",number]-1, GeneratorSettings["Height",number]-1))) { return }
+    
+    if(PlayerCell != CurrentCell) {
+        PlayerCell = CurrentCell  
+        CanUpdatePlayerCell = 0
+        
+        updateDrawCityTrackers()
+        
+        LastPlayerCellUpdate = systime()
+    }
+}
+
+function updateKeys() {
+    if(changed(Player:keyPressed("MINUS")) & Player:keyPressed("MINUS")) {
+        ClientIndex:popNotification()
+        holoPos(4, vec())
+    }
+    
+    if(changed(Player:keyPressed("EQUAL")) & Player:keyPressed("EQUAL")) {
+        local Notif = ClientIndex:getCurrentNotification()
+        
+        if(Notif:exists("Pos")) {
+            holoPos(4, Tiles[cellCoordsToIndex(Notif["Pos",vector2]), table]:getTileTop() + vec(0,0,90))
+        }
+    }
+}
+
+function updateHUD(Params:table) {
+    if(CurrentSelection:count() <=1) {
+        updateHover()
+    } else {
+        updateAttackHover()
+    }
+    
+    #updatePlayerPos()
+    updateKeys()
+}
+
